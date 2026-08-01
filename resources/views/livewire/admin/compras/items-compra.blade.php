@@ -107,41 +107,57 @@
                         <div class="form-group">
                             <label for="nombre"> Producto <b style="color: red">(*)</b></label>
 
-                            <div class="row">
-                                <div class="col-12 col-md-9 product-search-wrapper">
-                                    {{-- INPUT DE BÚSQUEDA --}}
-                                    <input type="text" class="form-control" id="buscador-producto"
-                                        placeholder="Escriba para buscar producto..."
-                                        onkeyup="filtrarProductos(this.value)"
-                                        onfocus="if(this.value.length>=2) filtrarProductos(this.value)"
-                                        autocomplete="off">
-
-                                    {{-- SELECT OCULTO PARA LIVEWIRE --}}
-                                    <select wire:model.live="productoId" class="form-control" required
-                                        id="producto-select" style="display: none;">
-                                        <option value="">Seleccione un producto</option>
-                                        @foreach ($productos as $producto)
-                                            <option value="{{ $producto->id }}"
-                                                data-nombre="{{ $producto->codigo }} {{ $producto->nombre }} {{ $producto->marca->nombre ?? '' }}"
-                                                data-codigo="{{ $producto->codigo }}"
-                                                data-marca="{{ $producto->marca->nombre ?? 'Sin marca' }}">
-                                                {{ $producto->codigo . ' - ' . $producto->nombre }}
-                                                ({{ $producto->marca->nombre ?? 'Sin marca' }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-
-                                    {{-- CONTENEDOR DE RESULTADOS --}}
-                                    <div id="resultados-busqueda" class="list-group app-search-results product-search-results" style="display:none">
+                            <div class="product-search-wrapper position-relative">
+                                <div class="input-group">
+                                    <input type="search"
+                                        wire:model.live.debounce.250ms="busqueda_producto"
+                                        id="buscador-producto-compra"
+                                        class="form-control"
+                                        placeholder="Buscar por código, nombre o marca..."
+                                        autocomplete="off"
+                                        aria-label="Buscar producto para comprar">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text" wire:loading wire:target="busqueda_producto">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </span>
                                     </div>
                                 </div>
-                                <div class="col-12 col-md-3 mt-2 mt-md-0">
-                                    <button class="btn btn-primary btn-block" wire:click="agregarAlCarrito"
-                                        @if (!$productoId) disabled @endif>
-                                        <i class="fas fa-cart-plus"></i> AGREGAR
-                                    </button>
-                                </div>
+
+                                @if (mb_strlen(trim($busqueda_producto)) >= 1)
+                                    <div class="list-group mt-1 app-search-results product-search-results"
+                                        id="resultados-busqueda-compra">
+                                        @forelse ($productos_filtrados as $producto)
+                                            <button type="button"
+                                                class="list-group-item list-group-item-action text-left"
+                                                wire:key="compra-producto-{{ $producto->id }}"
+                                                wire:click="seleccionarProductoYAgregar({{ $producto->id }})">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <span>
+                                                        <strong>{{ $producto->codigo }} - {{ $producto->nombre }}</strong>
+                                                        <small class="d-block text-muted">
+                                                            {{ $producto->marca?->nombre ?? 'Sin marca' }}
+                                                        </small>
+                                                    </span>
+                                                    <span class="text-right ml-2">
+                                                        <span class="badge {{ $producto->estado ? 'badge-success' : 'badge-secondary' }}">
+                                                            {{ $producto->estado ? 'Activo' : 'Inactivo' }}
+                                                        </span>
+                                                        <small class="d-block mt-1">Bs {{ number_format($producto->precio_compra, 2) }}</small>
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        @empty
+                                            <div class="list-group-item text-muted">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                No se encontraron productos con ese código, nombre o marca.
+                                            </div>
+                                        @endforelse
+                                    </div>
+                                @endif
                             </div>
+                            <small class="form-text text-muted">
+                                Escriba el código, nombre o marca y pulse sobre el producto. Los productos inactivos se activarán al recibir la compra.
+                            </small>
 
                             @error('productoId')
                                 <small style="color: red">{{ $message }}</small>
@@ -490,579 +506,73 @@
 
 @push('js')
     <script>
-        // ... tu código JavaScript aquí ...
-    </script>
-@endpush
-
-{{-- SCRIPTS PARA EL BUSCADOR --}}
-@push('js')
-    <script>
-        // ============================================
-        // VARIABLES GLOBALES
-        // ============================================
-        let timeoutBusqueda = null;
-        let currentIndex = -1;
-        let resultados = [];
-        let buscador = null;
-        let resultadosDiv = null;
-        let isNavigating = false;
-        let navigationTimeout = null;
-
-        // ============================================
-        // FUNCIONES DE BÚSQUEDA (ORIGINALES MODIFICADAS)
-        // ============================================
-
-        function filtrarProductos(texto) {
-            // Limpiar timeout anterior
-            if (timeoutBusqueda) {
-                clearTimeout(timeoutBusqueda);
-            }
-
-            // Si estamos navegando, no hacer nueva búsqueda
-            if (isNavigating) {
-                return;
-            }
-
-            // Esperar 300ms después de que el usuario deje de escribir
-            timeoutBusqueda = setTimeout(() => {
-                const select = document.getElementById('producto-select');
-                const contenedorResultados = document.getElementById('resultados-busqueda');
-
-                if (!select || !contenedorResultados) return;
-
-                const opciones = Array.from(select.options).slice(1); // Ignorar primera opción vacía
-
-                if (texto.length < 2) {
-                    contenedorResultados.style.display = 'none';
-                    currentIndex = -1;
-                    return;
-                }
-
-                texto = texto.toLowerCase().trim();
-
-                // Filtrar opciones que coincidan con la búsqueda
-                const filtradas = opciones.filter(opt => {
-                    const nombreCompleto = opt.getAttribute('data-nombre') || opt.text;
-                    return nombreCompleto.toLowerCase().includes(texto);
-                });
-
-                // Mostrar resultados
-                if (filtradas.length > 0) {
-                    contenedorResultados.innerHTML = filtradas.map((opt, idx) => {
-                        const textoOriginal = opt.text;
-                        const textoResaltado = textoOriginal.replace(
-                            new RegExp(texto, 'gi'),
-                            match =>
-                            `<strong style="background-color: #ffc107; color: #000;">${match}</strong>`
-                        );
-
-                        return `<a href="#" class="list-group-item list-group-item-action resultado-item"
-                            data-id="${opt.value}"
-                            data-nombre="${opt.getAttribute('data-nombre') || opt.text}"
-                            data-index="${idx}"
-                            style="padding: 8px 12px; border-bottom: 1px solid #eee; cursor: pointer;"
-                            onclick="seleccionarYAgregarProducto('${opt.value}'); return false;">
-                                ${textoResaltado}
-                            </a>`;
-                    }).join('');
-                    contenedorResultados.style.display = 'block';
-                    resultados = Array.from(contenedorResultados.querySelectorAll('.resultado-item'));
-                    currentIndex = -1;
-                } else {
-                    contenedorResultados.innerHTML =
-                        '<div class="list-group-item text-muted" style="padding: 8px 12px;">No se encontraron productos</div>';
-                    contenedorResultados.style.display = 'block';
-                    resultados = [];
-                    currentIndex = -1;
-                }
-            }, 300);
-        }
-
-        // ============================================
-        // NUEVA FUNCIÓN: Selecciona y agrega al carrito
-        // ============================================
-        // ============================================
-        // NUEVA FUNCIÓN: Selecciona y agrega al carrito (para click con mouse)
-        // ============================================
-        function seleccionarYAgregarProducto(id) {
-            const select = document.getElementById('producto-select');
-            const buscador = document.getElementById('buscador-producto');
-            const resultados = document.getElementById('resultados-busqueda');
-
-            if (!select || !buscador) return;
-
-            // Actualizar el select
-            select.value = id;
-
-            // OCULTAR RESULTADOS
-            if (resultados) {
-                resultados.style.display = 'none';
-            }
-
-            // Disparar evento para Livewire
-            Livewire.dispatch('set-producto-id', {
-                id: id
-            });
-
-            // FORZAR ACTUALIZACIÓN DIRECTA
-            setTimeout(() => {
-                if (typeof Livewire !== 'undefined' && Livewire.first) {
-                    Livewire.first().set('productoId', id);
-                }
-            }, 50);
-
-            // Limpiar el buscador
-            if (buscador) {
-                buscador.value = '';
-            }
-
-            // ESPERAR Y AGREGAR AL CARRITO
-            setTimeout(() => {
-                const componente = Livewire.first();
-                if (componente && componente.get('productoId')) {
-                    componente.call('agregarAlCarrito');
-                } else {
-                }
-            }, 100);
-
-            // Limpiar navegación
-            currentIndex = -1;
-            resultados = [];
-            isNavigating = false;
-        }
-
-        // ============================================
-        // FUNCIONES DE NAVEGACIÓN CON TECLADO
-        // ============================================
-
-        function resaltarElemento(index) {
-            if (!resultadosDiv || resultados.length === 0) return;
-
-            resultados.forEach(item => {
-                item.classList.remove('active');
-                item.style.backgroundColor = '';
-                item.style.borderLeft = '';
-            });
-
-            if (index >= 0 && index < resultados.length) {
-                resultados[index].classList.add('active');
-                resultados[index].style.backgroundColor = '#e9ecef';
-                resultados[index].style.borderLeft = '3px solid #28a745';
-
-                resultados[index].scrollIntoView({
-                    block: 'nearest',
-                    behavior: 'smooth'
-                });
-            }
-        }
-
-        function seleccionarElementoActual() {
-            if (currentIndex >= 0 && currentIndex < resultados.length) {
-                const elemento = resultados[currentIndex];
-                const productoId = elemento.getAttribute('data-id');
-
-                // Ocultar resultados
-                if (resultadosDiv) {
-                    resultadosDiv.style.display = 'none';
-                }
-
-                // Limpiar el buscador
-                if (buscador) {
-                    buscador.value = '';
-                }
-
-                // Llamar a la función que selecciona el producto
-                seleccionarProducto(productoId);
-
-                // ESPERAR UN POCO Y LUEGO AGREGAR AL CARRITO
-                setTimeout(() => {
-                    const componente = Livewire.first();
-                    if (componente && componente.get('productoId')) {
-                        componente.call('agregarAlCarrito');
-                    } else {
-                    }
-                }, 100);
-
-                // Limpiar variables
-                currentIndex = -1;
-                resultados = [];
-                isNavigating = false;
-
-                return true;
-            }
-            return false;
-        }
-
-        // ============================================
-        // FUNCIÓN ORIGINAL (modificada para no perder el foco)
-        // ============================================
-
-        function seleccionarProducto(id) {
-            const select = document.getElementById('producto-select');
-            const buscador = document.getElementById('buscador-producto');
-            const resultados = document.getElementById('resultados-busqueda');
-
-            if (!select || !buscador) return;
-
-            // Actualizar el select
-            select.value = id;
-
-            // Obtener el texto de la opción seleccionada
-            const opcionSeleccionada = Array.from(select.options).find(opt => opt.value === id);
-
-            // OCULTAR RESULTADOS
-            if (resultados) {
-                resultados.style.display = 'none';
-            }
-
-            // Disparar evento para Livewire
-            Livewire.dispatch('set-producto-id', {
-                id: id
-            });
-
-            // FORZAR ACTUALIZACIÓN DIRECTA
-            setTimeout(() => {
-                if (typeof Livewire !== 'undefined' && Livewire.first) {
-                    Livewire.first().set('productoId', id);
-                }
-            }, 50);
-
-            // Mostrar el nombre del producto seleccionado en el buscador
-            if (opcionSeleccionada) {
-                buscador.value = opcionSeleccionada.text;
-            }
-
-            // Limpiar navegación
-            currentIndex = -1;
-            resultados = [];
-            isNavigating = false;
-        }
-
-        // ============================================
-        // LISTENER PRINCIPAL DE LIVEWIRE
-        // ============================================
-
-        document.addEventListener('livewire:init', function() {
-
-            // Inicializar elementos
-            buscador = document.getElementById('buscador-producto');
-            resultadosDiv = document.getElementById('resultados-busqueda');
-
-            if (!buscador) {
-                return;
-            }
-
-            // ========== EVENTO INPUT (búsqueda) ==========
-            buscador.addEventListener('input', function(e) {
-                const texto = e.target.value;
-                filtrarProductos(texto);
-                currentIndex = -1;
-                isNavigating = false;
-                if (navigationTimeout) clearTimeout(navigationTimeout);
-            });
-
-            // ========== EVENTO KEYDOWN (navegación con teclado) ==========
-            buscador.addEventListener('keydown', function(e) {
-                resultadosDiv = document.getElementById('resultados-busqueda');
-                const hayResultados = resultadosDiv &&
-                    resultadosDiv.style.display !== 'none' &&
-                    resultadosDiv.children.length > 0 &&
-                    resultadosDiv.querySelectorAll('.resultado-item').length > 0;
-
-                if (hayResultados) {
-                    resultados = Array.from(resultadosDiv.querySelectorAll('.resultado-item'));
-
-                    if (resultados.length === 0) return;
-
-                    // FLECHA ABAJO
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        isNavigating = true;
-                        if (navigationTimeout) clearTimeout(navigationTimeout);
-
-                        currentIndex = (currentIndex + 1) % resultados.length;
-                        resaltarElemento(currentIndex);
-
-                        navigationTimeout = setTimeout(() => {
-                            isNavigating = false;
-                        }, 1500);
-                    }
-                    // FLECHA ARRIBA
-                    else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        isNavigating = true;
-                        if (navigationTimeout) clearTimeout(navigationTimeout);
-
-                        currentIndex = currentIndex <= 0 ? resultados.length - 1 : currentIndex - 1;
-                        resaltarElemento(currentIndex);
-
-                        navigationTimeout = setTimeout(() => {
-                            isNavigating = false;
-                        }, 1500);
-                    }
-                    // ENTER - Seleccionar producto
-                    // ENTER - Agregar el primer producto directamente
-                    // ENTER - Seleccionar producto (respeta navegación con flechas)
-                    else if (e.key === 'Enter') {
-                        e.preventDefault();
-
-                        // Si hay un elemento seleccionado con las flechas, usar ese
-                        if (currentIndex >= 0 && currentIndex < resultados.length) {
-                            const producto = resultados[currentIndex];
-                            const productoId = producto.getAttribute('data-id');
-
-                            // Ocultar resultados
-                            if (resultadosDiv) {
-                                resultadosDiv.style.display = 'none';
-                            }
-
-                            // Limpiar el buscador
-                            if (buscador) {
-                                buscador.value = '';
-                            }
-
-                            // Seleccionar y agregar al carrito
-                            seleccionarYAgregarProducto(productoId);
-                        }
-                        // Si no hay elemento seleccionado pero hay resultados, tomar el primero
-                        else if (resultados.length > 0) {
-                            const primerProducto = resultados[0];
-                            const productoId = primerProducto.getAttribute('data-id');
-
-                            // Ocultar resultados
-                            if (resultadosDiv) {
-                                resultadosDiv.style.display = 'none';
-                            }
-
-                            // Limpiar el buscador
-                            if (buscador) {
-                                buscador.value = '';
-                            }
-
-                            // Seleccionar y agregar al carrito
-                            seleccionarYAgregarProducto(productoId);
-                        }
-
-                        // Limpiar variables
-                        currentIndex = -1;
-                        resultados = [];
-                        isNavigating = false;
-                    }
-                    // ESCAPE - Cerrar resultados
-                    else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        if (resultadosDiv) {
-                            resultadosDiv.style.display = 'none';
-                        }
-                        currentIndex = -1;
-                        isNavigating = false;
-                    }
-                } else {
-                    // Sin resultados visibles - Enter para agregar producto ya seleccionado
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const componente = Livewire.first();
-                        const productoId = componente?.get('productoId');
-
-                        if (productoId && productoId !== '' && productoId !== null && productoId !==
-                            undefined) {
-                            componente.call('agregarAlCarrito');
-                        }
-                    }
-                }
-            });
-
-            // ========== MOSTRAR RESULTADOS AL FOCUS ==========
-            buscador.addEventListener('focus', function() {
-                if (this.value.length >= 2) {
-                    setTimeout(() => {
-                        const resultadosDivTemp = document.getElementById('resultados-busqueda');
-                        if (resultadosDivTemp && resultadosDivTemp.children.length > 0) {
-                            resultadosDivTemp.style.display = 'block';
-                            resultados = Array.from(resultadosDivTemp.querySelectorAll(
-                                '.resultado-item'));
-                            currentIndex = -1;
-                        }
-                    }, 100);
-                }
-            });
-
-            // ========== LIMPIAR RESULTADOS AL HACER CLICK FUERA ==========
-            document.addEventListener('click', function(e) {
-                if (buscador && !buscador.contains(e.target)) {
-                    const resultadosDivTemp = document.getElementById('resultados-busqueda');
-                    if (resultadosDivTemp && !resultadosDivTemp.contains(e.target)) {
-                        resultadosDivTemp.style.display = 'none';
-                        currentIndex = -1;
-                        isNavigating = false;
-                    }
-                }
-            });
-
-            // ========== EVENTO PRODUCTO AGREGADO ==========
-            // ========== EVENTO PRODUCTO AGREGADO ==========
-            Livewire.on('producto-agregado', function() {
-                if (buscador) {
-                    buscador.value = '';
-                    buscador.placeholder = 'Escriba para buscar producto...';
-                    buscador.focus(); // Mantener foco para seguir agregando
-                }
-                const resultadosDivTemp = document.getElementById('resultados-busqueda');
-                if (resultadosDivTemp) {
-                    resultadosDivTemp.style.display = 'none';
-                }
-                currentIndex = -1;
-                isNavigating = false;
-                resultados = [];
-            });
-
-            // La confirmación y el resultado final se gestionan una sola vez en la vista de edición.
-        });
-
-        // ============================================
-        // FUNCIONES EXISTENTES (sin modificar)
-        // ============================================
-
-        // Cerrar resultados al hacer clic fuera
-        document.addEventListener('click', function(e) {
-            const buscador = document.getElementById('buscador-producto');
-            const resultados = document.getElementById('resultados-busqueda');
-
-            if (!buscador || !resultados) return;
-
-            if (!e.target.closest('#buscador-producto') && !e.target.closest('#resultados-busqueda')) {
-                resultados.style.display = 'none';
-                currentIndex = -1;
-                isNavigating = false;
-            }
-        });
-
-        // Cerrar con la tecla ESC
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const resultados = document.getElementById('resultados-busqueda');
-                if (resultados) {
-                    resultados.style.display = 'none';
-                    currentIndex = -1;
-                    isNavigating = false;
-                }
-            }
-        });
-
         function confirmarEnvioCorreo(compraId) {
             Swal.fire({
                 title: '¿Enviar pedido al proveedor?',
-                text: 'Se enviará un correo con el detalle del carrito actual',
+                text: 'Se enviará un correo con el detalle del carrito actual.',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
                 confirmButtonText: 'Sí, enviar',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'Enviando...',
-                        text: 'Por favor espere',
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        }
-                    });
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = '{{ route('compras.enviarCorreo', $compra->id ?? $compraIdVariable) }}';
-                    form.innerHTML = '@csrf';
-                    document.body.appendChild(form);
-                    form.submit();
-                }
+                if (!result.isConfirmed) return;
+
+                Swal.fire({
+                    title: 'Enviando...',
+                    text: 'Por favor espere.',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = @json(route('compras.enviarCorreo', $compra->id));
+                form.innerHTML = @json(csrf_field());
+                document.body.appendChild(form);
+                form.submit();
             });
         }
 
         function confirmarEnvioWhatsappPdf(compraId) {
             Swal.fire({
-                title: '¿Enviar pedido por Whatsapp?',
-                text: 'Se generará un PDF y lo prepararemos para enviar',
+                title: '¿Preparar pedido para WhatsApp?',
+                text: 'Se generará el PDF del pedido.',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: 'green',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Sí, enviar PDF',
+                confirmButtonText: 'Sí, preparar',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (!result.isConfirmed) return;
+
+                Swal.fire({
+                    title: 'Generando PDF...',
+                    text: 'Por favor espere.',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const url = @json(route('compras.enviarWhatsappPdf', ['compra' => '__ID__'])).replace('__ID__', compraId);
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(async response => {
+                    if (!response.ok) throw new Error(await response.text());
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) throw new Error(data.message || 'No se pudo preparar el mensaje.');
+                    window.open(data.url, '_blank');
                     Swal.fire({
-                        title: 'Generando PDF...',
-                        text: 'Por favor espere',
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        }
+                        title: 'PDF preparado',
+                        html: `<p>WhatsApp se abrió en una nueva pestaña.</p><a href="${data.pdf_url}" target="_blank" class="btn btn-success">Descargar PDF</a>`,
+                        icon: 'success'
                     });
-
-                    let url = "{{ route('compras.enviarWhatsappPdf', ':id') }}";
-                    url = url.replace(':id', compraId);
-
-
-                    fetch(url, {
-                            method: 'GET',
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        })
-                        .then(response => {
-
-                            if (!response.ok) {
-                                return response.text().then(text => {
-                                    throw new Error(text);
-                                });
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            Swal.close();
-
-                            if (data.success) {
-                                window.open(data.url, '_blank');
-
-                                Swal.fire({
-                                    title: '¡PDF Generado!',
-                                    html: `
-                                        <p>✅ WhatsApp se abrirá en una nueva pestaña</p>
-                                        <p>📎 <strong>Para adjuntar el PDF:</strong></p>
-                                        <ol style="text-align: left;">
-                                            <li>Escribe el mensaje en WhatsApp</li>
-                                            <li>Haz clic en el ícono 📎 (adjuntar)</li>
-                                            <li>Selecciona "Documento"</li>
-                                            <li>Descarga y adjunta este PDF:</li>
-                                        </ol>
-                                        <a href="${data.pdf_url}" target="_blank" class="btn btn-success" style="padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">
-                                            📥 DESCARGAR PDF
-                                        </a>
-                                    `,
-                                    icon: 'success',
-                                    showConfirmButton: true,
-                                    confirmButtonText: 'Entendido'
-                                });
-                            } else {
-                                Swal.fire({
-                                    title: 'Error',
-                                    text: data.message || 'No se pudo preparar el mensaje',
-                                    icon: 'error'
-                                });
-                            }
-                        })
-                        .catch(error => {
-                            Swal.close();
-
-                            Swal.fire({
-                                title: 'Error',
-                                text: error.message || 'Error al conectar con el servidor',
-                                icon: 'error'
-                            });
-                        });
-                }
+                })
+                .catch(error => Swal.fire('Error', error.message || 'No se pudo generar el PDF.', 'error'));
             });
         }
     </script>

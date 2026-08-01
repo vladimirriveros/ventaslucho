@@ -22,6 +22,8 @@ class ItemsCompra extends Component
     public $fechaVencimiento;
     public $codigoLote;
     public $productos;
+    public string $busqueda_producto = '';
+    public $productos_filtrados = [];
     public $totalCompra = 0;
 
     // La sucursal se deriva del usuario autenticado; nunca del formulario.
@@ -71,7 +73,9 @@ class ItemsCompra extends Component
     {
         $this->productos_a_comprar = [];
         $this->compra = $compra;
-        $this->productos = Producto::with(['categoria', 'marca'])->where('estado', true)->orderBy('nombre')->get();
+        // El buscador consulta en el servidor mientras el usuario escribe.
+        // No se serializa todo el catálogo dentro del componente Livewire.
+        $this->productos = collect();
         $this->productos_sugeridos = $productos_sugeridos;
 
         abort_unless(
@@ -378,6 +382,8 @@ class ItemsCompra extends Component
             ]);
 
             $this->reset('productoId');
+            $this->busqueda_producto = '';
+            $this->productos_filtrados = [];
             $this->cantidad = 1;
             $this->dispatch('producto-agregado');
             return;
@@ -402,6 +408,8 @@ class ItemsCompra extends Component
 
         // Resetear
         $this->reset('productoId');
+        $this->busqueda_producto = '';
+        $this->productos_filtrados = [];
         $this->cantidad = 1;
 
         $this->dispatch('producto-agregado');
@@ -1124,6 +1132,48 @@ class ItemsCompra extends Component
         } catch (\Throwable $e) {
             $this->dispatch('mostrar-alerta', mensaje: $e->getMessage(), icono: 'error');
         }
+    }
+
+    public function updatedBusquedaProducto($value): void
+    {
+        $termino = trim((string) $value);
+        $this->productoId = null;
+
+        if (mb_strlen($termino) < 1) {
+            $this->productos_filtrados = [];
+            return;
+        }
+
+        $this->productos_filtrados = Producto::query()
+            ->with(['categoria', 'marca'])
+            ->where(function ($query) use ($termino) {
+                $query->where('codigo', 'like', "%{$termino}%")
+                    ->orWhere('nombre', 'like', "%{$termino}%")
+                    ->orWhereHas('marca', fn ($marca) => $marca->where('nombre', 'like', "%{$termino}%"));
+            })
+            ->orderBy('nombre')
+            ->limit(12)
+            ->get();
+    }
+
+    public function seleccionarProductoYAgregar(int $id): void
+    {
+        $producto = Producto::query()
+            ->with(['categoria', 'marca'])
+            ->find($id);
+
+        if (! $producto) {
+            $this->productos_filtrados = [];
+            $this->dispatch('mostrar-alerta', mensaje: 'El producto ya no se encuentra disponible.', icono: 'warning');
+            return;
+        }
+
+        $this->productoId = $producto->id;
+        $this->precioCompra = (float) $producto->precio_compra;
+        $this->busqueda_producto = '';
+        $this->productos_filtrados = [];
+
+        $this->agregarAlCarrito();
     }
 
     public function updatedProductoId($value): void

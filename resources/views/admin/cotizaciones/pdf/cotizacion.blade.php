@@ -254,7 +254,7 @@
                     <th width="48%">Producto</th>
                     <th width="20%">Precio</th>
                     <th width="20%">Subtotal</th>
-            </thead>
+                </tr>
             </thead>
             <tbody>
                 @foreach ($detalles as $detalle)
@@ -274,14 +274,19 @@
                 <span>SUBTOTAL:</span>
                 <span>Bs {{ number_format($cotizacion->subtotal, 2) }}</span>
             </div>
+            @if ((float) $cotizacion->descuento > 0)
+                <div class="total-line">
+                    <span>REBAJA:</span>
+                    <span>- Bs {{ number_format($cotizacion->descuento, 2) }}</span>
+                </div>
+            @endif
             <div class="total-line total-grande">
                 <strong>TOTAL:</strong>
                 <strong>Bs {{ number_format($cotizacion->total, 2) }}</strong>
             </div>
         </div>
 
-        {{-- DATOS ADICIONALES DE LA COTIZACIÓN --}}
-        {{-- DATOS ADICIONALES DE LA COTIZACIÓN --}}
+        {{-- Datos adicionales de la cotización --}}
         @php
             $observacionesData = json_decode($cotizacion->observaciones, true);
         @endphp

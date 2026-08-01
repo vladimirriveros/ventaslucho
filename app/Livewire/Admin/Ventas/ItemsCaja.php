@@ -93,10 +93,24 @@ class ItemsCaja extends Component
     public function mount()
     {
         $user = Auth::user();
-        abort_unless($user && $user->tieneSucursalOperativa(), 403, 'Su usuario debe tener una sucursal activa asignada.');
+        abort_unless($user, 403);
 
-        $this->sucursal_id = (int) $user->sucursal_id;
-        $this->sucursales = collect([$user->sucursal]);
+        if ($user->can('operaciones.todas-sucursales')) {
+            // El Superadministrador únicamente supervisa: puede cambiar el filtro
+            // de sucursal, pero no recibe permisos de apertura/cierre/movimientos.
+            $this->sucursales = Sucursal::query()
+                ->where('activa', true)
+                ->orderBy('nombre')
+                ->get();
+
+            $sucursalPreferida = $this->sucursales->firstWhere('id', (int) $user->sucursal_id)
+                ?? $this->sucursales->first();
+            $this->sucursal_id = $sucursalPreferida?->id;
+        } else {
+            abort_unless($user->tieneSucursalOperativa(), 403, 'Su usuario debe tener una sucursal activa asignada.');
+            $this->sucursal_id = (int) $user->sucursal_id;
+            $this->sucursales = collect([$user->sucursal]);
+        }
 
         $this->fecha_desde = Carbon::now()->startOfMonth()->format('Y-m-d');
         $this->fecha_hasta = Carbon::now()->format('Y-m-d');
@@ -105,11 +119,26 @@ class ItemsCaja extends Component
 
     public function updatedSucursalId()
     {
-        $sucursalAsignada = (int) Auth::user()->sucursal_id;
-        if ((int) $this->sucursal_id !== $sucursalAsignada) {
-            $this->sucursal_id = $sucursalAsignada;
-            $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'La caja se administra únicamente en la sucursal asignada a su usuario.');
+        $user = Auth::user();
+
+        if ($user->can('operaciones.todas-sucursales')) {
+            $sucursalValida = Sucursal::query()
+                ->whereKey((int) $this->sucursal_id)
+                ->where('activa', true)
+                ->exists();
+
+            if (! $sucursalValida) {
+                $this->sucursal_id = $this->sucursales->first()?->id;
+                $this->dispatch('mostrar-alerta', icono: 'warning', mensaje: 'Seleccione una sucursal activa para supervisar.');
+            }
+        } else {
+            $sucursalAsignada = (int) $user->sucursal_id;
+            if ((int) $this->sucursal_id !== $sucursalAsignada) {
+                $this->sucursal_id = $sucursalAsignada;
+                $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'La caja se administra únicamente en la sucursal asignada a su usuario.');
+            }
         }
+
         $this->cargarCajaActiva();
         $this->cargarCajasCerradas();
     }
@@ -126,7 +155,7 @@ class ItemsCaja extends Component
 
     public function cargarCajaActiva()
     {
-        if ($this->sucursal_id && Auth::user()->puedeOperarSucursal((int) $this->sucursal_id)) {
+        if ($this->sucursal_id && Auth::user()->puedeGestionarSucursal((int) $this->sucursal_id)) {
             $this->caja_activa = Caja::getCajaAbierta($this->sucursal_id);
             if ($this->caja_activa) {
                 $this->cargarMovimientosDia();
@@ -167,7 +196,7 @@ class ItemsCaja extends Component
     public function cargarCajasCerradas()
     {
         if ($this->sucursal_id && $this->fecha_desde && $this->fecha_hasta
-            && Auth::user()->puedeOperarSucursal((int) $this->sucursal_id)) {
+            && Auth::user()->puedeGestionarSucursal((int) $this->sucursal_id)) {
             $this->cajas_cerradas = Caja::where('sucursal_id', $this->sucursal_id)
                 ->where('estado', 'cerrada')
                 ->whereBetween('fecha_apertura', [
@@ -412,7 +441,7 @@ class ItemsCaja extends Component
         }
 
         $caja = Caja::with(['movimientos', 'sucursal', 'user', 'userCierre'])->findOrFail($cajaId);
-        abort_unless(Auth::user()->puedeOperarSucursal((int) $caja->sucursal_id), 403);
+        abort_unless(Auth::user()->puedeGestionarSucursal((int) $caja->sucursal_id), 403);
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.caja.pdf.reporte', [
             'caja' => $caja,
@@ -440,7 +469,7 @@ class ItemsCaja extends Component
         }
 
         $caja = Caja::findOrFail($cajaId);
-        if (!Auth::user()->puedeOperarSucursal((int) $caja->sucursal_id)) {
+        if (!Auth::user()->puedeGestionarSucursal((int) $caja->sucursal_id)) {
             $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'No puede consultar esta caja.');
             return;
         }
@@ -533,7 +562,7 @@ class ItemsCaja extends Component
         }
 
         $venta = Venta::with(['cliente', 'user', 'detalles.producto', 'detalles.lote'])->find($ventaId);
-        if (!$venta || !Auth::user()->puedeOperarSucursal((int) $venta->sucursal_id)) {
+        if (!$venta || !Auth::user()->puedeGestionarSucursal((int) $venta->sucursal_id)) {
             $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'Venta no encontrada o sin autorización.');
             return;
         }

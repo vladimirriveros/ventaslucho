@@ -41,9 +41,11 @@
                 <i class="fas fa-file-invoice"></i> Listado de Cotizaciones
             </h3>
             <div class="card-tools">
-                <a href="{{ route('cotizaciones.create') }}" class="btn btn-warning btn-sm">
-                    <i class="fas fa-plus"></i> Nueva Cotización
-                </a>
+                @can('cotizaciones.create')
+                    <a href="{{ route('cotizaciones.create') }}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-plus"></i> Nueva Cotización
+                    </a>
+                @endcan
             </div>
         </div>
         <div class="card-body p-0">

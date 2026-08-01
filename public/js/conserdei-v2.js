@@ -24,25 +24,27 @@
 
     async function loadAlerts(){
         if(!window.Conserdei?.alertasUrl)return;
-        const box=q('#notifications-content'), dot=q('#notification-dot'), scope=q('#notifications-scope');
+        const box=q('#notifications-content'), count=q('#notification-count'), scope=q('#notifications-scope');
         try{
             const response=await fetch(window.Conserdei.alertasUrl,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
             if(!response.ok)throw new Error('No se pudieron consultar las alertas');
             const data=await response.json();
-            const stock=Number(data.stock_bajo||0), exp=Number(data.lotes_por_vencer||0), total=stock+exp;
+            const stock=Number(data.stock_bajo||0), exp=Number(data.lotes_por_vencer||0), expired=Number(data.lotes_vencidos||0), total=Number(data.total ?? (stock+exp+expired));
+            const center=window.Conserdei.alertCenterUrl||'#';
             if(scope)scope.textContent=data.alcance||'Sucursal asignada';
-            if(dot)dot.classList.toggle('d-none',total===0);
+            if(count){count.textContent=String(total);count.classList.toggle('d-none',total===0);}
             if(box){
                 if(total===0){box.innerHTML='<div class="notification-empty"><i class="fas fa-check-circle text-success mr-1"></i> No hay alertas pendientes.</div>';}
                 else{
-                    box.innerHTML=(stock?`<a class="notification-item danger" href="${window.Conserdei.stockUrl}"><i class="fas fa-box-open"></i><span><strong>${stock} producto${stock===1?'':'s'} con stock bajo</strong><small>Incluye productos sin existencias en la sucursal.</small></span></a>`:'')+
-                    (exp?`<a class="notification-item" href="${window.Conserdei.lotesUrl}"><i class="fas fa-calendar-alt"></i><span><strong>${exp} lote${exp===1?'':'s'} próximo${exp===1?'':'s'} a vencer</strong><small>Vencimiento dentro de ${data.dias_vencimiento||7} días.</small></span></a>`:'');
+                    box.innerHTML=(stock?`<a class="notification-item danger" href="${center}?seccion=stock#stock-bajo"><i class="fas fa-box-open"></i><span><strong>${stock} producto${stock===1?'':'s'} con stock bajo</strong><small>Incluye productos sin existencias.</small></span></a>`:'')+
+                    (exp?`<a class="notification-item" href="${center}?seccion=lotes#por-vencer"><i class="fas fa-hourglass-half"></i><span><strong>${exp} lote${exp===1?'':'s'} próximo${exp===1?'':'s'} a vencer</strong><small>Vencimiento dentro de ${data.dias_vencimiento||7} días.</small></span></a>`:'')+
+                    (expired?`<a class="notification-item danger" href="${center}?seccion=vencidos#vencidos"><i class="fas fa-calendar-times"></i><span><strong>${expired} lote${expired===1?'':'s'} vencido${expired===1?'':'s'}</strong><small>Tienen existencias y requieren revisión.</small></span></a>`:'');
                 }
             }
             const today=new Date().toISOString().slice(0,10), key=`alerts-seen-${window.Conserdei.userId}-${today}`;
-            if(total>0&&!sessionStorage.getItem(key)){window.appToast(`Atención: ${stock} productos con stock bajo y ${exp} lotes próximos a vencer.`,'warning',7000);sessionStorage.setItem(key,'1');}
+            if(total>0&&!sessionStorage.getItem(key)){window.appToast(`Atención: ${stock} productos con stock bajo, ${exp} lotes por vencer y ${expired} lotes vencidos.`,'warning',8000);sessionStorage.setItem(key,'1');}
         }catch(error){
-            if(box)box.innerHTML='<div class="notification-empty">No se pudieron cargar las alertas.</div>';
+            if(box)box.innerHTML='<div class="notification-empty">No se pudieron actualizar las alertas. Use el Centro de alertas.</div>';
         }
     }
     d.addEventListener('DOMContentLoaded',()=>{

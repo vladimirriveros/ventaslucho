@@ -35,7 +35,8 @@ Auth::routes(['register' => false]);
 Route::middleware('auth')->group(function () {
     Route::get('/home', [App\Http\Controllers\AdminController::class, 'index'])->name('home');
     Route::get('/admin', [App\Http\Controllers\AdminController::class, 'index'])->name('admin.index');
-    Route::get('/alertas/resumen', [AlertaController::class, 'resumen'])->name('alertas.resumen');
+    Route::get('/admin/alertas', [AlertaController::class, 'index'])->name('alertas.index');
+    Route::get('/admin/alertas/resumen', [AlertaController::class, 'resumen'])->name('alertas.resumen');
     Route::get('/alerta-stock', [AlertaController::class, 'stock'])->name('alerta.stock');
     Route::get('/password/change', [App\Http\Controllers\ProfileController::class, 'showChangePasswordForm'])->name('password.change');
     Route::post('/password/change', [App\Http\Controllers\ProfileController::class, 'changePassword'])->name('password.change.update');

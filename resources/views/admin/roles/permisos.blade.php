@@ -32,11 +32,11 @@
                 </div>
                 <div class="card-body">
 
-                    @if($rol->name === 'admin')
+                    @if($rol->name === 'superadmin')
                         <div class="alert alert-warning alert-dismissible">
                             <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
                             <h5><i class="icon fas fa-exclamation-triangle"></i> Rol Protegido</h5>
-                            El rol <strong>"Administrador"</strong> tiene todos los permisos del sistema por defecto y no pueden ser modificados.
+                            El rol <strong>"Superadministrador"</strong> tiene una matriz fija de supervisión y no puede recibir permisos operativos.
                         </div>
                     @else
                         <div class="alert alert-info alert-dismissible">
@@ -114,7 +114,7 @@
 
                             @foreach ($permisos as $modulo => $grupoPermisos)
                                 <div class="col-md-4 col-sm-6 mb-4 modulo-col">
-                                    <div class="card card-outline card-{{ $rol->name === 'admin' ? 'secondary' : 'primary' }} h-100 modulo-card"
+                                    <div class="card card-outline card-{{ $rol->name === 'superadmin' ? 'secondary' : 'primary' }} h-100 modulo-card"
                                         id="modulo-{{ Str::slug($modulo) }}">
                                         <div class="card-header bg-light">
                                             <div class="d-flex justify-content-between align-items-center">
@@ -135,7 +135,7 @@
                                             </div>
                                         </div>
                                         <div class="card-body p-0" id="modulo-{{ Str::slug($modulo) }}-content">
-                                            @if($rol->name !== 'admin')
+                                            @if($rol->name !== 'superadmin')
                                                 <!-- Botones de selección rápida por módulo -->
                                                 <div class="btn-group btn-group-sm w-100" role="group" style="border-radius: 0;">
                                                     <button type="button" class="btn btn-outline-success seleccionar-modulo"
@@ -368,7 +368,7 @@
                                                     <div class="permiso-item" data-modulo="{{ Str::slug($modulo) }}"
                                                         data-nombre="{{ strtolower($nombreAmigable) }}"
                                                         id="item-{{ $permiso->id }}">
-                                                        <label class="custom-checkbox-right @if($rol->name === 'admin') disabled-label @endif"
+                                                        <label class="custom-checkbox-right @if($rol->name === 'superadmin') disabled-label @endif"
                                                             for="permiso-{{ $permiso->id }}">
                                                             <span class="checkbox-label">
                                                                 <i class="fas {{ $iconoAccion }} text-secondary mr-2"></i>
@@ -377,13 +377,13 @@
                                                             <input type="checkbox" class="permiso-checkbox"
                                                                 name="permisos[]" value="{{ $permiso->id }}"
                                                                 id="permiso-{{ $permiso->id }}"
-                                                                {{ $rol->name === 'admin' ? 'checked disabled' : ($rol->hasPermissionTo($permiso->name) ? 'checked' : '') }}>
+                                                                {{ $rol->name === 'superadmin' ? 'checked disabled' : ($rol->hasPermissionTo($permiso->name) ? 'checked' : '') }}>
                                                         </label>
                                                     </div>
                                                 @endforeach
                                             </div>
                                         </div>
-                                        @if($rol->name !== 'admin')
+                                        @if($rol->name !== 'superadmin')
                                         <div class="card-footer text-muted small">
                                             <i class="fas fa-check-circle text-success"></i>
                                             <span id="selected-{{ Str::slug($modulo) }}">0</span> de
@@ -395,7 +395,7 @@
                             @endforeach
                         </div>
 
-                        @if($rol->name !== 'admin')
+                        @if($rol->name !== 'superadmin')
                             <hr>
 
                             <!-- Resumen de selección -->
@@ -430,7 +430,7 @@
                                 <a href="{{ route('roles.index') }}" class="btn btn-secondary">
                                     <i class="fas fa-arrow-left"></i> Cancelar
                                 </a>
-                                @if($rol->name !== 'admin')
+                                @if($rol->name !== 'superadmin')
                                     <button type="submit" class="btn btn-primary" id="btn-guardar">
                                         <i class="fas fa-save"></i> Guardar Permisos
                                     </button>
@@ -447,7 +447,7 @@
         </div>
     </div>
 
-    @if($rol->name !== 'admin')
+    @if($rol->name !== 'superadmin')
     <!-- Modal de Resumen Mejorado -->
     <div class="modal fade" id="resumenModal" tabindex="-1" role="dialog" aria-labelledby="resumenModalLabel"
         aria-hidden="true">
@@ -656,7 +656,7 @@
     <script>
         $(document).ready(function() {
             // Solo ejecutar scripts interactivos si NO es admin
-            @if($rol->name !== 'admin')
+            @if($rol->name !== 'superadmin')
                 // Función para actualizar estado visual del módulo
                 function actualizarEstadoModulo(modulo) {
                     var total = $('.permiso-item[data-modulo="' + modulo + '"]').length;

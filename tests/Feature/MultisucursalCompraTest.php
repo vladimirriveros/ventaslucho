@@ -57,7 +57,7 @@ class MultisucursalCompraTest extends TestCase
             'estado' => 'pendiente',
             'observaciones' => null,
         ]);
-        $producto = Producto::where('estado', true)->firstOrFail();
+        $producto = Producto::firstOrFail();
 
         Livewire::actingAs($usuario)
             ->test(ItemsCompra::class, ['compra' => $compra])
@@ -88,23 +88,18 @@ class MultisucursalCompraTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_solo_superadmin_crea_usuarios_y_admin_asigna_perfiles_de_su_sucursal(): void
+    public function test_solo_superadmin_crea_usuarios_y_asigna_roles(): void
     {
         $superadmin = User::where('email', 'vlavlavlariver@gmail.com')->firstOrFail();
         $admin = User::where('email', 'admin@admin.com')->firstOrFail();
         $usuarioPrincipal = User::where('email', 'abc@abc.com')->firstOrFail();
-        $usuarioOtraSucursal = User::where('email', 'vendedor.norte@demo.com')->firstOrFail();
         $rolCajero = Role::where('name', 'cajero')->firstOrFail();
 
         $this->actingAs($superadmin)
             ->get(route('user.create'))
             ->assertOk();
 
-        $this->actingAs($admin)
-            ->get(route('user.create'))
-            ->assertForbidden();
-
-        $this->actingAs($admin)
+        $this->actingAs($superadmin)
             ->post(route('user.asignar-roles', $usuarioPrincipal->id), [
                 'roles' => [$rolCajero->id],
             ])
@@ -113,7 +108,15 @@ class MultisucursalCompraTest extends TestCase
         $this->assertTrue($usuarioPrincipal->fresh()->hasRole('cajero'));
 
         $this->actingAs($admin)
-            ->post(route('user.asignar-roles', $usuarioOtraSucursal->id), [
+            ->get(route('user.index'))
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->get(route('user.create'))
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->post(route('user.asignar-roles', $usuarioPrincipal->id), [
                 'roles' => [$rolCajero->id],
             ])
             ->assertForbidden();

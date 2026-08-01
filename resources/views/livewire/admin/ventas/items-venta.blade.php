@@ -141,9 +141,30 @@
                             <span class="badge badge-primary">Total Bs {{ number_format($totalVenta, 2) }}</span>
                         </div>
                         <div class="card-body">
-                            @can('ventas.aplicar-descuento')
-                                <button type="button" class="btn btn-outline-warning btn-sm mb-3" wire:click="abrirModalDescuento"><i class="fas fa-percent mr-1"></i>Aplicar descuento</button>
-                            @endcan
+                            <div class="sale-total-editor mb-3">
+                                <div>
+                                    <small>Subtotal de productos</small>
+                                    <strong>Bs {{ number_format($subtotalVenta, 2) }}</strong>
+                                    @if($descuento_monto > 0)<span class="badge badge-success">Rebaja Bs {{ number_format($descuento_monto, 2) }}</span>@endif
+                                </div>
+                                @can('ventas.aplicar-descuento')
+                                    <div class="sale-total-input">
+                                        <label for="total-final-venta">Total final a cobrar</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">Bs</span></div>
+                                            <input id="total-final-venta" type="number" value="{{ number_format($nuevo_total, 2, '.', '') }}"
+                                                wire:change="actualizarTotalFinal($event.target.value)" class="form-control font-weight-bold text-right"
+                                                min="0.01" max="{{ $subtotalVenta }}" step="0.01" inputmode="decimal">
+                                            @if($descuento_monto > 0)
+                                                <div class="input-group-append"><button type="button" class="btn btn-outline-danger" wire:click="quitarDescuento" title="Quitar rebaja"><i class="fas fa-undo"></i></button></div>
+                                            @endif
+                                        </div>
+                                        <small>Puede aplicar la rebaja antes o después de elegir efectivo, QR o pago mixto.</small>
+                                    </div>
+                                @else
+                                    <div class="sale-total-readonly"><small>Total final</small><strong>Bs {{ number_format($totalVenta, 2) }}</strong></div>
+                                @endcan
+                            </div>
 
                             <div class="row g-3">
                                 <div class="col-12 col-md-6">
@@ -167,10 +188,12 @@
                             @if ($tipo_venta === 'contado' && in_array($metodo_pago, ['qr', 'transferencia', 'tarjeta', 'mixto'], true))
                                 <div class="mt-3">
                                     <label class="form-label">Cuenta de destino <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" value="{{ $banca_seleccionada?->nombre ?? 'Seleccione una cuenta activa' }}" readonly>
-                                        <button class="btn btn-outline-primary" type="button" wire:click="$set('mostrar_modal_bancas', true)"><i class="fas fa-search"></i></button>
-                                        @if($banca_id)<button class="btn btn-outline-danger" type="button" wire:click="limpiarBanca"><i class="fas fa-times"></i></button>@endif
+                                    <div class="input-group bank-selector-control">
+                                        <input type="text" class="form-control" value="{{ $banca_seleccionada ? $banca_seleccionada->banco . ' · ' . $banca_seleccionada->nombre : 'Seleccione una cuenta activa' }}" readonly>
+                                        <div class="input-group-append">
+                                            <button class="btn btn-outline-primary" type="button" wire:click="$set('mostrar_modal_bancas', true)"><i class="fas fa-university mr-1"></i>{{ $banca_id ? 'Cambiar' : 'Elegir cuenta' }}</button>
+                                            @if($banca_id)<button class="btn btn-outline-danger" type="button" wire:click="limpiarBanca" title="Quitar cuenta"><i class="fas fa-times"></i></button>@endif
+                                        </div>
                                     </div>
                                 </div>
 
@@ -629,12 +652,12 @@
                         </button>
                     </div>
                     <div class="modal-body">
+                        <p class="text-muted mb-3">Elija la cuenta que recibirá el pago. Para QR se mostrará la imagen registrada inmediatamente.</p>
                         @if (count($bancas) > 0)
                             <div class="row">
                                 @foreach ($bancas as $banca)
-                                    <div class="col-md-6 mb-3">
-                                        <div class="card {{ $banca_id == $banca->id ? 'border-primary' : '' }}"
-                                            style="cursor: pointer; {{ $banca_id == $banca->id ? 'background-color: #e8f0fe;' : '' }}"
+                                    <div class="col-12 col-md-6 mb-3" wire:key="banca-modal-{{ $banca->id }}">
+                                        <button type="button" class="bank-choice-card {{ $banca_id == $banca->id ? 'selected' : '' }}"
                                             wire:click="seleccionarBanca({{ $banca->id }})">
                                             <div class="card-body">
                                                 <div class="d-flex justify-content-between align-items-start">
@@ -658,7 +681,7 @@
                                                     @endif
                                                 </div>
                                             </div>
-                                        </div>
+                                        </button>
                                     </div>
                                 @endforeach
                             </div>

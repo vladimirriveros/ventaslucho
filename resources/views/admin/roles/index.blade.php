@@ -20,9 +20,13 @@
                 <div class="card-header">
                     <h3 class="card-title"><b>Roles registrados</b></h3>
                     <div class="card-tools">
-                        <a class="btn btn-primary" href="{{ route('roles.create') }}">
-                            <i class="fas fa-plus"></i> Crear nuevo
-                        </a>
+                        @can('roles.create')
+                            <a class="btn btn-primary" href="{{ route('roles.create') }}">
+                                <i class="fas fa-plus"></i> Crear nuevo
+                            </a>
+                        @else
+                            <span class="badge badge-info px-3 py-2"><i class="fas fa-eye mr-1"></i>Roles predeterminados</span>
+                        @endcan
                     </div>
                 </div>
                 <div class="card-body">
@@ -55,41 +59,39 @@
                                     </td>
                                     <td style="text-align: center">
                                         <div class="btn-group" role="group">
-                                            <a href="{{ route('roles.permisos', $rol->id) }}"
-                                               class="btn btn-warning btn-sm"
-                                               title="Gestionar permisos">
-                                                <i class="fas fa-check"></i> Asignar Permisos
-                                            </a>
+                                            @can('roles.permisos')
+                                                <a href="{{ route('roles.permisos', $rol->id) }}"
+                                                   class="btn btn-info btn-sm"
+                                                   title="Consultar permisos">
+                                                    <i class="fas fa-check"></i> Permisos
+                                                </a>
+                                            @endcan
 
-                                            <a href="{{ route('roles.edit', $rol->id) }}"
-                                               class="btn btn-success btn-sm"
-                                               title="Editar rol">
-                                                <i class="fas fa-edit"></i> Editar
-                                            </a>
+                                            @can('roles.edit')
+                                                <a href="{{ route('roles.edit', $rol->id) }}"
+                                                   class="btn btn-success btn-sm"
+                                                   title="Editar rol">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </a>
+                                            @endcan
 
-                                            @if($rol->name !== 'admin')
-                                                <form action="{{ route('roles.destroy', $rol->id) }}"
-                                                      method="POST"
-                                                      id="form-eliminar-{{ $rol->id }}"
-                                                      class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="button"
-                                                            class="btn btn-danger btn-sm"
-                                                            onclick="confirmarEliminacion({{ $rol->id }}, '{{ $rol->name }}')"
-                                                            title="Eliminar rol">
-                                                        <i class="fas fa-trash-alt"></i> Eliminar
-                                                    </button>
-                                                </form>
-                                            @else
-                                                <button type="button"
-                                                        class="btn btn-secondary btn-sm"
-                                                        disabled
-                                                        data-toggle="tooltip"
-                                                        title="Rol protegido - No se puede eliminar">
-                                                    <i class="fas fa-trash-alt"></i> Eliminar
-                                                </button>
-                                            @endif
+                                            @can('roles.destroy')
+                                                @if(!in_array($rol->name, ['superadmin', 'admin', 'vendedor', 'cajero', 'almacen'], true))
+                                                    <form action="{{ route('roles.destroy', $rol->id) }}"
+                                                          method="POST"
+                                                          id="form-eliminar-{{ $rol->id }}"
+                                                          class="d-inline">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="button"
+                                                                class="btn btn-danger btn-sm"
+                                                                onclick="confirmarEliminacion({{ $rol->id }}, '{{ $rol->name }}')"
+                                                                title="Eliminar rol">
+                                                            <i class="fas fa-trash-alt"></i> Eliminar
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

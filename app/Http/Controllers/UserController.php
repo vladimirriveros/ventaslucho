@@ -192,9 +192,7 @@ class UserController extends Controller
         $user = User::withTrashed()->with(['roles', 'sucursal'])->findOrFail($id);
         $this->autorizarAsignacionRoles($actor, $user);
 
-        $roles = $actor->esSuperAdministrador()
-            ? $this->rolesAsignablesPorSuperadmin()
-            : $this->rolesAsignablesPorAdmin();
+        $roles = $this->rolesAsignablesPorSuperadmin();
 
         return response()->json([
             'success' => true,
@@ -218,9 +216,7 @@ class UserController extends Controller
         $user = User::withTrashed()->findOrFail($id);
         $this->autorizarAsignacionRoles($actor, $user);
 
-        $rolesPermitidos = ($actor->esSuperAdministrador()
-            ? $this->rolesAsignablesPorSuperadmin()
-            : $this->rolesAsignablesPorAdmin())
+        $rolesPermitidos = $this->rolesAsignablesPorSuperadmin()
             ->pluck('id')
             ->all();
 
@@ -264,21 +260,9 @@ class UserController extends Controller
 
     private function autorizarAsignacionRoles(User $actor, User $objetivo): void
     {
+        abort_unless($actor->esSuperAdministrador(), 403, 'Solo el Superadministrador puede asignar roles.');
         abort_if($objetivo->is_protected || $objetivo->hasRole('superadmin'), 403, 'No se pueden modificar los roles del Superadministrador.');
-
-        if ($actor->esSuperAdministrador()) {
-            return;
-        }
-
-        abort_unless($actor->hasRole('admin'), 403, 'Solo un administrador puede asignar roles.');
-        abort_if($objetivo->hasRole('admin'), 403, 'Un administrador no puede modificar los roles de otro administrador.');
-        abort_unless($actor->tieneSucursalOperativa(), 403, 'Su usuario no tiene una sucursal activa asignada.');
         abort_if($actor->id === $objetivo->id, 403, 'No puede modificar sus propios roles.');
-        abort_unless(
-            (int) $actor->sucursal_id === (int) $objetivo->sucursal_id,
-            403,
-            'Solo puede administrar usuarios de su propia sucursal.'
-        );
     }
 
     private function rolesAsignablesPorSuperadmin()
@@ -289,14 +273,4 @@ class UserController extends Controller
             ->get();
     }
 
-    private function rolesAsignablesPorAdmin()
-    {
-        // El administrador de sucursal solo distribuye perfiles operativos
-        // previamente definidos por el sistema. Los roles administrativos o
-        // personalizados quedan bajo control exclusivo del Superadministrador.
-        return Role::query()
-            ->whereIn('name', ['vendedor', 'cajero', 'almacen'])
-            ->orderBy('name')
-            ->get();
-    }
 }

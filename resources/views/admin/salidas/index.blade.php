@@ -100,9 +100,11 @@
                     <h3 class="card-title"><b>Salidas registradas</b></h3>
 
                     <div class="card-tools">
-                        <a class="btn btn-primary" href="{{ route('salidas.create') }}">
-                            Crear nuevo
-                        </a>
+                        @can('salidas.create')
+                            <a class="btn btn-primary" href="{{ route('salidas.create') }}">Crear nuevo</a>
+                        @else
+                            <span class="badge badge-info px-3 py-2"><i class="fas fa-eye mr-1"></i>Solo consulta</span>
+                        @endcan
                     </div>
                 </div>
 

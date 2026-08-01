@@ -49,7 +49,7 @@ class CompraController extends Controller
         $sucursalOperativa = Auth::user()?->sucursalOperativa();
         abort_unless($sucursalOperativa, 403, 'Su usuario debe tener una sucursal activa asignada para crear compras.');
         $proveedores = Proveedor::orderBy('nombre')->get();
-        $productos = Producto::where('estado', true)->orderBy('nombre')->get();
+        $productos = Producto::orderBy('nombre')->get();
 
         $observacion_predefinida = $request->query('obs', '');
         $productos_sugeridos = $request->query('productos', '');
@@ -111,7 +111,7 @@ class CompraController extends Controller
         $compra = Compra::with('sucursal')->findOrFail($id);
         $this->autorizarOperacionCompra($compra);
         $proveedores = Proveedor::orderBy('nombre')->get();
-        $productos = Producto::where('estado', true)->orderBy('nombre')->get();
+        $productos = Producto::orderBy('nombre')->get();
         $marcas = Marca::orderBy('nombre')->get();
 
         session()->forget('sucursal_origen_nombre');

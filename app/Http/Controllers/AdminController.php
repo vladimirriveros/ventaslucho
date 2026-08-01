@@ -136,7 +136,6 @@ class AdminController extends Controller
         $total_cajas_abiertas = $aplicarSucursal(Caja::query())->where('estado', 'abierta')->count();
         $total_saldo_bancas = $user->can('bancas.index') ? (float) Banca::sum('saldo_actual') : 0.0;
         $total_cotizaciones_activas = $aplicarSucursal(Cotizacion::query())->where('estado', 'activa')->count();
-
         return view('admin.index', compact(
             'total_sucursales',
             'total_proveedores',

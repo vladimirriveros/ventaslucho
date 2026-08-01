@@ -53,6 +53,7 @@ class RoleSeeder extends Seeder
             'compras.procesarCarrito',
             'compras.show',
             'compras.store',
+            'cotizaciones.aplicar-descuento',
             'cotizaciones.convertir',
             'cotizaciones.create',
             'cotizaciones.destroy',
@@ -163,13 +164,69 @@ class RoleSeeder extends Seeder
         $cajero = Role::firstOrCreate(['name' => 'cajero', 'guard_name' => 'web']);
         $almacen = Role::firstOrCreate(['name' => 'almacen', 'guard_name' => 'web']);
 
-        // El Superadministrador supervisa todas las sucursales, crea usuarios,
-        // asigna sucursales y administra la estructura global del sistema.
-        $superadmin->syncPermissions($permissions->values());
+        // El Superadministrador es un perfil de supervisión global. Puede
+        // consultar todas las sucursales, generar reportes y administrar
+        // usuarios/roles, pero no registra ni modifica operaciones del negocio.
+        $permisosSuperadmin = [
+            'operaciones.todas-sucursales',
+            'bancas.index',
+            'bancas.movimientos',
+            'bancas.show',
+            'caja.index',
+            'caja.reportes',
+            'categorias.index',
+            'categorias.show',
+            'clientes.index',
+            'clientes.show',
+            'compras.index',
+            'compras.show',
+            'cotizaciones.imprimir',
+            'cotizaciones.index',
+            'cotizaciones.show',
+            'inventario.stock_bajo.pdf',
+            'inventario.stock_bajo_sucursal',
+            'inventario.sucursal.pdf',
+            'lotes.index',
+            'lotes.pdf',
+            'lotes.show',
+            'lotes.vencidos',
+            'lotes.vencidos.sucursal',
+            'mostrar_inventario_por_sucursal.show',
+            'movimientos.index',
+            'pagos.index',
+            'productos.index',
+            'productos.show',
+            'proveedores.index',
+            'reportes.vendedores',
+            'reportes.ventas',
+            'reportes.ventas.diario',
+            'reportes.ventas.mensual',
+            'roles.index',
+            'roles.permisos',
+            'roles.update_permisos',
+            'salidas.index',
+            'salidas.show',
+            'sucursal_por_lotes.index',
+            'sucursales.index',
+            'sucursales.show',
+            'tipo_cambio.bs-a-usd',
+            'tipo_cambio.index',
+            'tipo_cambio.usd-a-bs',
+            'user.assign-roles',
+            'user.create',
+            'user.destroy',
+            'user.edit',
+            'user.index',
+            'user.store',
+            'user.update',
+            'ventas.index',
+            'ventas.show',
+        ];
+        $superadmin->syncPermissions($permissions->only($permisosSuperadmin)->values());
 
-        // El administrador trabaja únicamente en la sucursal asignada. Puede
-        // administrar la operación completa de esa sucursal y asignar roles
-        // operativos a usuarios ya creados por el Superadministrador.
+        // El administrador trabaja únicamente en la sucursal asignada y
+        // administra la operación de esa sucursal. La gestión de usuarios y
+        // roles queda reservada al Superadministrador.
         $permisosSoloSuperadmin = [
             'operaciones.todas-sucursales',
             'sucursales.create',
@@ -187,9 +244,11 @@ class RoleSeeder extends Seeder
             'roles.store',
             'roles.update',
             'roles.update_permisos',
+            'user.assign-roles',
             'user.create',
             'user.destroy',
             'user.edit',
+            'user.index',
             'user.store',
             'user.update',
         ];
@@ -209,6 +268,7 @@ class RoleSeeder extends Seeder
             'clientes.show',
             'clientes.store',
             'clientes.update',
+            'cotizaciones.aplicar-descuento',
             'cotizaciones.convertir',
             'cotizaciones.create',
             'cotizaciones.imprimir',
@@ -225,6 +285,7 @@ class RoleSeeder extends Seeder
             'inventario.stock_bajo_sucursal',
             'reportes.ventas',
             'reportes.ventas.diario',
+            'ventas.aplicar-descuento',
             'ventas.create',
             'ventas.index',
             'ventas.show',

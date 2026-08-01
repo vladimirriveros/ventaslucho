@@ -39,6 +39,10 @@
             <a class="app-nav-link {{ request()->routeIs('home', 'admin.index') ? 'active' : '' }}" href="{{ route('home') }}">
                 <i class="fas fa-chart-pie"></i><span>Panel principal</span>
             </a>
+            <a class="app-nav-link {{ request()->routeIs('alertas.*') ? 'active' : '' }}" href="{{ route('alertas.index') }}">
+                <i class="fas fa-bell"></i><span>Centro de alertas</span>
+                @if(($alertasSistema['total'] ?? 0) > 0)<span class="app-nav-count">{{ $alertasSistema['total'] }}</span>@endif
+            </a>
 
             @canany(['ventas.index','ventas.create','caja.index','cotizaciones.index','clientes.index','bancas.index'])
                 <span class="app-nav-label">VENTAS Y CAJA</span>
@@ -123,11 +127,27 @@
             <div class="app-topbar-actions">
                 <div class="dropdown">
                     <button class="app-icon-btn notification-button" id="notifications-button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Alertas">
-                        <i class="far fa-bell"></i><span class="notification-dot d-none" id="notification-dot"></span>
+                        <i class="far fa-bell"></i>
+                        <span class="notification-count {{ ($alertasSistema['total'] ?? 0) > 0 ? '' : 'd-none' }}" id="notification-count">{{ $alertasSistema['total'] ?? 0 }}</span>
                     </button>
                     <div class="dropdown-menu dropdown-menu-right notifications-menu" aria-labelledby="notifications-button">
-                        <div class="notifications-header"><strong>Alertas del sistema</strong><small id="notifications-scope">Cargando…</small></div>
-                        <div id="notifications-content" class="notifications-content"><div class="notification-empty"><i class="fas fa-spinner fa-spin"></i> Consultando inventario…</div></div>
+                        <div class="notifications-header"><strong>Alertas del sistema</strong><small id="notifications-scope">{{ $alertasSistema['alcance'] ?? 'Sucursal asignada' }}</small></div>
+                        <div id="notifications-content" class="notifications-content">
+                            @if(($alertasSistema['total'] ?? 0) === 0)
+                                <div class="notification-empty"><i class="fas fa-check-circle text-success mr-1"></i>No hay alertas pendientes.</div>
+                            @else
+                                @if(($alertasSistema['stock_bajo'] ?? 0) > 0)
+                                    <a class="notification-item danger" href="{{ route('alertas.index', ['seccion' => 'stock']) }}#stock-bajo"><i class="fas fa-box-open"></i><span><strong>{{ $alertasSistema['stock_bajo'] }} producto(s) con stock bajo</strong><small>Incluye productos sin existencias.</small></span></a>
+                                @endif
+                                @if(($alertasSistema['lotes_por_vencer'] ?? 0) > 0)
+                                    <a class="notification-item" href="{{ route('alertas.index', ['seccion' => 'lotes']) }}#por-vencer"><i class="fas fa-hourglass-half"></i><span><strong>{{ $alertasSistema['lotes_por_vencer'] }} lote(s) por vencer</strong><small>Próximos {{ $alertasSistema['dias_vencimiento'] ?? 7 }} días.</small></span></a>
+                                @endif
+                                @if(($alertasSistema['lotes_vencidos'] ?? 0) > 0)
+                                    <a class="notification-item danger" href="{{ route('alertas.index', ['seccion' => 'vencidos']) }}#vencidos"><i class="fas fa-calendar-times"></i><span><strong>{{ $alertasSistema['lotes_vencidos'] }} lote(s) vencido(s)</strong><small>Tienen existencias y requieren salida.</small></span></a>
+                                @endif
+                            @endif
+                        </div>
+                        <a href="{{ route('alertas.index') }}" class="notifications-footer">Ver todas las alertas <i class="fas fa-arrow-right ml-1"></i></a>
                     </div>
                 </div>
                 <button type="button" class="app-icon-btn" id="theme-toggle" aria-label="Cambiar tema" title="Cambiar tema"><i class="far fa-moon"></i></button>
@@ -150,6 +170,19 @@
         <main class="app-content">
             @if ($errors->any())
                 <div class="alert alert-danger app-alert"><strong>Revise los datos:</strong><ul class="mb-0 pl-3">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
+            @endif
+            @if(auth()->user()->hasRole('superadmin'))
+                <div class="alert alert-info app-alert d-flex align-items-center mb-3">
+                    <i class="fas fa-eye mr-2"></i>
+                    <div><strong>Modo supervisión global:</strong> puede consultar todas las sucursales, administrar usuarios y roles, y generar reportes. Las operaciones de compra, venta, caja e inventario son de solo lectura.</div>
+                </div>
+            @endif
+            @if(request()->routeIs('home', 'admin.index') && ($alertasSistema['total'] ?? 0) > 0)
+                <a href="{{ route('alertas.index') }}" class="system-alert-summary">
+                    <span class="system-alert-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                    <span class="min-w-0"><strong>Hay {{ $alertasSistema['total'] }} alertas que requieren revisión</strong><small>{{ $alertasSistema['stock_bajo'] }} de stock · {{ $alertasSistema['lotes_por_vencer'] }} por vencer · {{ $alertasSistema['lotes_vencidos'] }} vencidas</small></span>
+                    <i class="fas fa-chevron-right ml-auto"></i>
+                </a>
             @endif
             @yield('content_header')
             @yield('content')
@@ -177,8 +210,7 @@
     <script>
         window.Conserdei = {
             alertasUrl: @json(route('alertas.resumen')),
-            stockUrl: @json(auth()->user()->can('sucursal_por_lotes.index') ? route('sucursal_por_lotes.index') : route('home')),
-            lotesUrl: @json(auth()->user()->can('lotes.index') ? route('lotes.index') : route('home')),
+            alertCenterUrl: @json(route('alertas.index')),
             userId: {{ (int) auth()->id() }}
         };
     </script>

@@ -74,7 +74,11 @@
                     <h3 class="card-title"><b>Compras registradas</b></h3>
 
                     <div class="card-tools">
-                        <a class="btn btn-primary" href="{{ route('compras.create') }}">Crear nuevo</a>
+                        @can('compras.create')
+                            <a class="btn btn-primary" href="{{ route('compras.create') }}">Crear nuevo</a>
+                        @else
+                            <span class="badge badge-info px-3 py-2"><i class="fas fa-eye mr-1"></i>Modo supervisión</span>
+                        @endcan
                     </div>
                     <!-- /.card-tools -->
                 </div>
@@ -119,38 +123,42 @@
                                                 class="btn btn-info btn-sm"><i class="fas fa-eye"></i> </a>
 
                                             @if ($compra->estado != 'Recibido')
-                                                <a href="{{ route('compras.edit', $compra->id) }}"
-                                                    class="btn btn-success btn-sm"><i class="fas fa-edit"></i> Continuar</a>
+                                                @can('compras.edit')
+                                                    <a href="{{ route('compras.edit', $compra->id) }}"
+                                                        class="btn btn-success btn-sm"><i class="fas fa-edit"></i> Continuar</a>
+                                                @endcan
                                                 @if ($compra->estado != 'Finalice y envie a Sucursal')
-                                                    <form action="{{ route('compras.destroy', $compra->id) }}"
-                                                        id="miformulario{{ $compra->id }}" method="POST"
-                                                        class="d-inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-danger btn-sm"
-                                                            onclick="preguntar{{ $compra->id }}(event)">
-                                                            <i class="fas fa-trash-alt"></i>
-                                                        </button>
-                                                    </form>
-                                                    <script>
-                                                        function preguntar{{ $compra->id }}(event) {
-                                                            event.preventDefault();
-                                                            Swal.fire({
-                                                                title: "Desea eliminar la compra #{{ $compra->id }}?",
-                                                                text: "Esta acción no se puede revertir",
-                                                                icon: "question",
-                                                                showCancelButton: true,
-                                                                confirmButtonColor: "#3085d6",
-                                                                cancelButtonColor: "#d33",
-                                                                confirmButtonText: "Si, eliminar",
-                                                                cancelButtonText: "Cancelar"
-                                                            }).then((result) => {
-                                                                if (result.isConfirmed) {
-                                                                    document.getElementById("miformulario{{ $compra->id }}").submit();
-                                                                }
-                                                            });
-                                                        }
-                                                    </script>
+                                                    @can('compras.destroy')
+                                                        <form action="{{ route('compras.destroy', $compra->id) }}"
+                                                            id="miformulario{{ $compra->id }}" method="POST"
+                                                            class="d-inline">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-danger btn-sm"
+                                                                onclick="preguntar{{ $compra->id }}(event)">
+                                                                <i class="fas fa-trash-alt"></i>
+                                                            </button>
+                                                        </form>
+                                                        <script>
+                                                            function preguntar{{ $compra->id }}(event) {
+                                                                event.preventDefault();
+                                                                Swal.fire({
+                                                                    title: "¿Desea cancelar la compra #{{ $compra->id }}?",
+                                                                    text: "Esta acción no se puede revertir.",
+                                                                    icon: "question",
+                                                                    showCancelButton: true,
+                                                                    confirmButtonColor: "#3085d6",
+                                                                    cancelButtonColor: "#d33",
+                                                                    confirmButtonText: "Sí, cancelar",
+                                                                    cancelButtonText: "Volver"
+                                                                }).then((result) => {
+                                                                    if (result.isConfirmed) {
+                                                                        document.getElementById("miformulario{{ $compra->id }}").submit();
+                                                                    }
+                                                                });
+                                                            }
+                                                        </script>
+                                                    @endcan
                                                 @endif
                                             @endif
 

@@ -229,11 +229,12 @@ class RoleController extends Controller
     {
         $rol = Role::findOrFail($id);
 
-        // El rol global del sistema siempre conserva todos los permisos.
+        // El rol Superadministrador tiene una matriz fija de supervisión.
+        // No puede ampliarse con permisos operativos desde la interfaz.
         if ($rol->name === 'superadmin') {
             return redirect()->route('roles.index')
-                ->with('mensaje', 'El rol Superadministrador tiene todos los permisos y no puede modificarse.')
-                ->with('icono', 'error');
+                ->with('mensaje', 'El rol Superadministrador es de supervisión y sus permisos están protegidos.')
+                ->with('icono', 'info');
         }
 
         // Sincronizar permisos seleccionados

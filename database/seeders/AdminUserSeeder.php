@@ -16,23 +16,38 @@ class AdminUserSeeder extends Seeder
             ->orderBy('id')
             ->value('id');
 
-        $superadmin = User::withTrashed()->updateOrCreate(
-            ['email' => 'vlavlavlariver@gmail.com'],
+        $superadministradores = [
             [
-                'name' => 'Super Administrador',
-                'sucursal_id' => $sucursalPrincipalId,
-                'password' => Hash::make('@dmin123'),
-                'email_verified_at' => now(),
-                'is_protected' => true,
-            ]
-        );
+                'email' => 'vlavlavlariver@gmail.com',
+                'name' => 'Superadministrador Propietario',
+                'password' => '@dmin123',
+            ],
+            [
+                'email' => 'desarrollador@conserdei.com',
+                'name' => 'Superadministrador Desarrollador',
+                'password' => '@dev12345',
+            ],
+        ];
 
-        $superadmin->syncRoles(['superadmin']);
+        foreach ($superadministradores as $datos) {
+            $superadmin = User::withTrashed()->updateOrCreate(
+                ['email' => $datos['email']],
+                [
+                    'name' => $datos['name'],
+                    'sucursal_id' => $sucursalPrincipalId,
+                    'password' => Hash::make($datos['password']),
+                    'email_verified_at' => now(),
+                    'is_protected' => true,
+                ]
+            );
 
-        if ($superadmin->trashed()) {
-            $superadmin->restore();
+            if ($superadmin->trashed()) {
+                $superadmin->restore();
+            }
+
+            $superadmin->syncRoles(['superadmin']);
         }
 
-        $this->command?->info('✅ Superadministrador protegido creado y asignado a la sucursal principal.');
+        $this->command?->info('✅ Dos superadministradores protegidos fueron creados: propietario y desarrollador.');
     }
 }

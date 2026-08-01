@@ -196,11 +196,41 @@
                                         </tr>
                                     @endforeach
                                 </tbody>
-                                <tfoot class="bg-light">
+                                <tfoot class="bg-light quote-total-footer">
                                     <tr>
-                                        <th colspan="3" class="text-right">TOTAL:</th>
-                                        <th class="text-right">Bs {{ number_format($totalCotizacion, 2) }}</th>
+                                        <th colspan="3" class="text-right">Subtotal:</th>
+                                        <th class="text-right">Bs {{ number_format($subtotalCotizacion, 2) }}</th>
                                         <th></th>
+                                    </tr>
+                                    @if($descuentoCotizacion > 0)
+                                        <tr class="text-success">
+                                            <th colspan="3" class="text-right">Rebaja:</th>
+                                            <th class="text-right">- Bs {{ number_format($descuentoCotizacion, 2) }}</th>
+                                            <th></th>
+                                        </tr>
+                                    @endif
+                                    <tr>
+                                        <th colspan="3" class="text-right align-middle">TOTAL FINAL:</th>
+                                        <th class="text-right">
+                                            @can('cotizaciones.aplicar-descuento')
+                                                <div class="input-group input-group-sm total-edit-control">
+                                                    <div class="input-group-prepend"><span class="input-group-text">Bs</span></div>
+                                                    <input type="number" value="{{ number_format($nuevoTotalCotizacion, 2, '.', '') }}"
+                                                        wire:change="actualizarTotalCotizacion($event.target.value)"
+                                                        class="form-control text-right font-weight-bold" min="0.01" max="{{ $subtotalCotizacion }}" step="0.01" inputmode="decimal">
+                                                </div>
+                                                <small class="text-muted d-block mt-1">Edite el total para aplicar una rebaja.</small>
+                                            @else
+                                                <strong>Bs {{ number_format($totalCotizacion, 2) }}</strong>
+                                            @endcan
+                                        </th>
+                                        <th class="text-center">
+                                            @can('cotizaciones.aplicar-descuento')
+                                                @if($descuentoCotizacion > 0)
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" wire:click="quitarDescuentoCotizacion" title="Quitar rebaja"><i class="fas fa-undo"></i></button>
+                                                @endif
+                                            @endcan
+                                        </th>
                                     </tr>
                                 </tfoot>
                             </table>

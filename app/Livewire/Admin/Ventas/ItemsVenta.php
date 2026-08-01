@@ -554,7 +554,7 @@ private function calcularPrecioPromedioPonderado($itemsAgregados)
         }
 
         $nuevoTotal = round((float) $this->nuevo_total, 2);
-        if ($nuevoTotal < 0 || $nuevoTotal > $this->subtotalVenta) {
+        if ($nuevoTotal <= 0 || $nuevoTotal > $this->subtotalVenta) {
             $this->dispatch('mostrar-alerta', icono: 'warning', mensaje: 'El total con descuento no es válido.');
             return;
         }
@@ -563,8 +563,46 @@ private function calcularPrecioPromedioPonderado($itemsAgregados)
         $this->descuento_porcentaje = round($this->descuento_monto / $this->subtotalVenta * 100, 2);
         $this->totalVenta = $nuevoTotal;
         $this->mostrar_modal_descuento = false;
-        $this->calcularCambio();
+        $this->sincronizarPagoConTotal(true);
         $this->dispatch('mostrar-alerta', icono: 'success', mensaje: 'Descuento aplicado: Bs ' . number_format($this->descuento_monto, 2));
+    }
+
+    public function actualizarTotalFinal($nuevoTotal): void
+    {
+        if (!Auth::user()->can('ventas.aplicar-descuento')) {
+            $this->nuevo_total = $this->totalVenta;
+            $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'No tiene permiso para aplicar rebajas.');
+            return;
+        }
+
+        $subtotal = round((float) collect($this->carrito)->sum('subtotal'), 2);
+        $total = round((float) $nuevoTotal, 2);
+        if ($subtotal <= 0 || $total <= 0 || $total > $subtotal) {
+            $this->nuevo_total = $this->totalVenta;
+            $this->dispatch('mostrar-alerta', icono: 'warning', mensaje: 'El total final debe ser mayor a cero y no puede superar el subtotal.');
+            return;
+        }
+
+        $this->subtotalVenta = $subtotal;
+        $this->descuento_monto = round($subtotal - $total, 2);
+        $this->descuento_porcentaje = round($this->descuento_monto / $subtotal * 100, 2);
+        $this->totalVenta = $total;
+        $this->nuevo_total = $total;
+        $this->sincronizarPagoConTotal(true);
+        $this->guardarBorrador();
+        $this->dispatch('mostrar-alerta', icono: 'success', mensaje: 'Total de venta actualizado. Rebaja: Bs ' . number_format($this->descuento_monto, 2));
+    }
+
+    public function quitarDescuento(): void
+    {
+        if (!Auth::user()->can('ventas.aplicar-descuento')) {
+            return;
+        }
+
+        $this->descuento_monto = 0;
+        $this->descuento_porcentaje = 0;
+        $this->calcularTotal();
+        $this->sincronizarPagoConTotal(true);
     }
 
     // Método para cargar bancas
@@ -739,6 +777,7 @@ private function calcularPrecioPromedioPonderado($itemsAgregados)
 
         $this->descuento_monto = min((float) $cotizacion->descuento, (float) $cotizacion->subtotal);
         $this->calcularTotal();
+        $this->sincronizarPagoConTotal(true);
         $this->dispatch('mostrar-alerta', icono: 'success', mensaje: 'Cotización cargada. El stock se reasignó por vencimiento y antigüedad; se descontará al confirmar.');
     }
 
@@ -1000,6 +1039,39 @@ private function obtenerCantidadEnCarrito($productoId)
         }
         $this->calcularCambio();
         $this->guardarBorrador();
+    }
+
+    private function sincronizarPagoConTotal(bool $forzarEfectivo = false): void
+    {
+        if ($this->tipo_venta !== 'contado') {
+            $this->efectivo_recibido = null;
+            $this->cambio = 0;
+            return;
+        }
+
+        if ($this->metodo_pago === 'efectivo') {
+            if ($forzarEfectivo || $this->efectivo_recibido === null || $this->efectivo_recibido === '' || (float) $this->efectivo_recibido < $this->totalVenta) {
+                $this->efectivo_recibido = $this->totalVenta;
+            }
+            $this->monto_efectivo_mixto = 0;
+            $this->monto_qr_mixto = 0;
+        } elseif ($this->metodo_pago === 'mixto') {
+            $efectivo = round((float) $this->monto_efectivo_mixto, 2);
+            if ($efectivo <= 0 || $efectivo >= $this->totalVenta) {
+                $efectivo = round($this->totalVenta / 2, 2);
+            }
+            $this->monto_efectivo_mixto = $efectivo;
+            $this->monto_qr_mixto = round($this->totalVenta - $efectivo, 2);
+            if ($forzarEfectivo || (float) $this->efectivo_recibido < $efectivo) {
+                $this->efectivo_recibido = $efectivo;
+            }
+        } else {
+            $this->efectivo_recibido = null;
+            $this->monto_efectivo_mixto = 0;
+            $this->monto_qr_mixto = 0;
+        }
+
+        $this->calcularCambio();
     }
 
     public function calcularCambio()
@@ -1653,13 +1725,8 @@ private function obtenerCantidadEnCarrito($productoId)
 
     public function updatedTotalVenta()
     {
-        $this->calcularCambio();
-
-        // Autocompletar efectivo recibido si es contado en efectivo
-        if ($this->tipo_venta == 'contado' && $this->metodo_pago == 'efectivo') {
-            $this->efectivo_recibido = $this->totalVenta;
-            $this->calcularCambio();
-        }
+        $this->sincronizarPagoConTotal(true);
+        $this->guardarBorrador();
     }
 
     public function verificarCajaAbierta()
@@ -1675,7 +1742,7 @@ private function obtenerCantidadEnCarrito($productoId)
     {
         if (in_array($property, [
             'cliente_id', 'busqueda_cliente', 'tipo_venta', 'efectivo_recibido',
-            'descuento_monto', 'descuento_porcentaje', 'lugar_entrega',
+            'descuento_monto', 'descuento_porcentaje', 'nuevo_total', 'lugar_entrega',
             'observaciones_adicionales', 'incluye_impuesto', 'forma_pago',
             'plazo_entrega', 'validez_economica',
         ], true)) {
@@ -1708,6 +1775,7 @@ private function obtenerCantidadEnCarrito($productoId)
             'totalVenta' => $this->totalVenta,
             'descuento_monto' => $this->descuento_monto,
             'descuento_porcentaje' => $this->descuento_porcentaje,
+            'nuevo_total' => $this->nuevo_total,
             'metodo_pago' => $this->metodo_pago,
             'tipo_venta' => $this->tipo_venta,
             'efectivo_recibido' => $this->efectivo_recibido,
@@ -1739,7 +1807,7 @@ private function obtenerCantidadEnCarrito($productoId)
 
         foreach ([
             'cliente_id', 'busqueda_cliente', 'carrito', 'subtotalVenta',
-            'totalVenta', 'descuento_monto', 'descuento_porcentaje', 'metodo_pago',
+            'totalVenta', 'descuento_monto', 'descuento_porcentaje', 'nuevo_total', 'metodo_pago',
             'tipo_venta', 'efectivo_recibido', 'monto_efectivo_mixto', 'monto_qr_mixto',
             'banca_id', 'lugar_entrega', 'observaciones_adicionales', 'incluye_impuesto',
             'forma_pago', 'plazo_entrega', 'validez_economica',

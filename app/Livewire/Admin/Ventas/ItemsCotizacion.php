@@ -25,7 +25,10 @@ class ItemsCotizacion extends Component
     public $cantidad = 1;
     public $productos;
     public $carrito = [];
+    public $subtotalCotizacion = 0;
+    public $descuentoCotizacion = 0;
     public $totalCotizacion = 0;
+    public $nuevoTotalCotizacion = 0;
     public $valida_hasta;
     public $observaciones;
 
@@ -113,6 +116,7 @@ class ItemsCotizacion extends Component
             ];
         }
 
+        $this->descuentoCotizacion = round((float) ($cotizacion->descuento ?? 0), 2);
         $this->calcularTotal();
     }
 
@@ -388,7 +392,44 @@ class ItemsCotizacion extends Component
 
     public function calcularTotal()
     {
-        $this->totalCotizacion = round((float) collect($this->carrito)->sum('subtotal'), 2);
+        $this->subtotalCotizacion = round((float) collect($this->carrito)->sum('subtotal'), 2);
+        $this->descuentoCotizacion = round(min($this->subtotalCotizacion, max(0, (float) $this->descuentoCotizacion)), 2);
+        $this->totalCotizacion = round($this->subtotalCotizacion - $this->descuentoCotizacion, 2);
+        $this->nuevoTotalCotizacion = $this->totalCotizacion;
+    }
+
+    public function actualizarTotalCotizacion($nuevoTotal): void
+    {
+        if (!Auth::user()->can('cotizaciones.aplicar-descuento')) {
+            $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'No tiene permiso para aplicar rebajas en cotizaciones.');
+            $this->nuevoTotalCotizacion = $this->totalCotizacion;
+            return;
+        }
+
+        $subtotal = round((float) collect($this->carrito)->sum('subtotal'), 2);
+        $total = round((float) $nuevoTotal, 2);
+
+        if ($subtotal <= 0 || $total <= 0 || $total > $subtotal) {
+            $this->nuevoTotalCotizacion = $this->totalCotizacion;
+            $this->dispatch('mostrar-alerta', icono: 'warning', mensaje: 'El total final debe ser mayor a cero y no puede superar el subtotal.');
+            return;
+        }
+
+        $this->subtotalCotizacion = $subtotal;
+        $this->descuentoCotizacion = round($subtotal - $total, 2);
+        $this->totalCotizacion = $total;
+        $this->nuevoTotalCotizacion = $total;
+        $this->dispatch('mostrar-alerta', icono: 'success', mensaje: 'Total de cotización actualizado. Rebaja: Bs ' . number_format($this->descuentoCotizacion, 2));
+    }
+
+    public function quitarDescuentoCotizacion(): void
+    {
+        if (!Auth::user()->can('cotizaciones.aplicar-descuento')) {
+            return;
+        }
+
+        $this->descuentoCotizacion = 0;
+        $this->calcularTotal();
     }
 
     public function updatedSucursalId(): void
@@ -417,6 +458,10 @@ class ItemsCotizacion extends Component
         }
         if (!$this->valida_hasta || Carbon::parse($this->valida_hasta)->lt(today())) {
             $this->dispatch('mostrar-alerta', icono: 'warning', mensaje: 'La fecha de validez no puede estar en el pasado.');
+            return;
+        }
+        if ($this->descuentoCotizacion > 0 && !Auth::user()->can('cotizaciones.aplicar-descuento')) {
+            $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'No tiene permiso para aplicar rebajas en cotizaciones.');
             return;
         }
         $this->dispatch('mostrar-confirmacion-cotizacion', total: $this->totalCotizacion,
@@ -448,7 +493,7 @@ class ItemsCotizacion extends Component
                 }
 
                 $itemsValidados = [];
-                $totalServidor = 0.0;
+                $subtotalServidor = 0.0;
                 foreach ($this->carrito as $item) {
                     $producto = Producto::query()->where('estado', true)->find($item['producto_id'] ?? null);
                     $cantidad = (int) ($item['cantidad'] ?? 0);
@@ -461,12 +506,17 @@ class ItemsCotizacion extends Component
                         throw new \RuntimeException('No tiene permiso para modificar el precio de ' . $producto->nombre . '.');
                     }
                     $subtotal = round($cantidad * $precio, 2);
-                    $totalServidor += $subtotal;
+                    $subtotalServidor += $subtotal;
                     $itemsValidados[] = compact('producto', 'cantidad', 'precio', 'subtotal');
                 }
-                $totalServidor = round($totalServidor, 2);
+                $subtotalServidor = round($subtotalServidor, 2);
+                $descuentoServidor = round(min($subtotalServidor, max(0, (float) $this->descuentoCotizacion)), 2);
+                if ($descuentoServidor > 0 && !$user->can('cotizaciones.aplicar-descuento')) {
+                    throw new \RuntimeException('No tiene permiso para aplicar rebajas en cotizaciones.');
+                }
+                $totalServidor = round($subtotalServidor - $descuentoServidor, 2);
                 if ($totalServidor <= 0) {
-                    throw new \RuntimeException('El total de la cotización debe ser mayor a cero.');
+                    throw new \RuntimeException('El total final de la cotización debe ser mayor a cero.');
                 }
 
                 $observacionesJson = json_encode([
@@ -493,8 +543,8 @@ class ItemsCotizacion extends Component
                         'sucursal_id' => $this->sucursal_id,
                         'cliente_id' => $this->cliente_id,
                         'valida_hasta' => $this->valida_hasta,
-                        'subtotal' => $totalServidor,
-                        'descuento' => 0,
+                        'subtotal' => $subtotalServidor,
+                        'descuento' => $descuentoServidor,
                         'total' => $totalServidor,
                         'observaciones' => $observacionesJson,
                     ]);
@@ -507,8 +557,8 @@ class ItemsCotizacion extends Component
                         'cliente_id' => $this->cliente_id,
                         'fecha' => today(),
                         'valida_hasta' => $this->valida_hasta,
-                        'subtotal' => $totalServidor,
-                        'descuento' => 0,
+                        'subtotal' => $subtotalServidor,
+                        'descuento' => $descuentoServidor,
                         'total' => $totalServidor,
                         'observaciones' => $observacionesJson,
                         'estado' => 'activa',
@@ -525,7 +575,10 @@ class ItemsCotizacion extends Component
                         'subtotal' => $item['subtotal'],
                     ]);
                 }
+                $this->subtotalCotizacion = $subtotalServidor;
+                $this->descuentoCotizacion = $descuentoServidor;
                 $this->totalCotizacion = $totalServidor;
+                $this->nuevoTotalCotizacion = $totalServidor;
                 return $cotizacion;
             }, 3);
 
@@ -533,7 +586,10 @@ class ItemsCotizacion extends Component
             $this->dispatch('cotizacion-guardada', cotizacionId: $cotizacion->id,
                 imprimirUrl: route('cotizaciones.imprimir', $cotizacion->id), tieneSinStock: $tieneSinStock);
             $this->carrito = [];
+            $this->subtotalCotizacion = 0;
+            $this->descuentoCotizacion = 0;
             $this->totalCotizacion = 0;
+            $this->nuevoTotalCotizacion = 0;
             $this->cotizacion = $cotizacion;
         } catch (\Throwable $e) {
             $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'No se guardó la cotización: ' . $e->getMessage());
@@ -558,7 +614,10 @@ class ItemsCotizacion extends Component
                 'sin_stock' => $this->obtenerStockDisponible($detalle->producto_id) < (int) $detalle->cantidad,
             ];
         }
-        $this->totalCotizacion = $this->cotizacion->total;
+        $this->subtotalCotizacion = round((float) $this->cotizacion->subtotal, 2);
+        $this->descuentoCotizacion = round((float) $this->cotizacion->descuento, 2);
+        $this->totalCotizacion = round((float) $this->cotizacion->total, 2);
+        $this->nuevoTotalCotizacion = $this->totalCotizacion;
         $this->cliente_id = $this->cotizacion->cliente_id;
         $this->valida_hasta = $this->cotizacion->valida_hasta ? Carbon::parse($this->cotizacion->valida_hasta)->format('Y-m-d') : $this->valida_hasta;
 

@@ -145,7 +145,9 @@ class DatabaseSeeder extends Seeder
                 'stock_minimo'        => 5,
                 'stock_maximo'        => 50,
                 'unidad_medida'       => 'unidad',
-                'estado'              => true,
+                // Los productos demostrativos nacen inactivos para no generar
+                // alertas de stock hasta que el usuario decida habilitarlos.
+                'estado'              => false,
             ]);
         }
 

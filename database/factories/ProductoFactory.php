@@ -38,7 +38,7 @@ class ProductoFactory extends Factory
             'stock_minimo' => $this->faker->numberBetween(1, 5),
             'stock_maximo' => $this->faker->numberBetween(10, 20),
             'unidad_medida' => $this->faker->randomElement(['unidad', 'kg', 'g', 'l', 'ml']),
-            'estado' => $this->faker->randomElement(['1', '0']),
+            'estado' => false,
         ];
     }
 }

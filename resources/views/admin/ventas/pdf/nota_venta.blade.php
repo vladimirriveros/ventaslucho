@@ -110,7 +110,11 @@
     </table>
 
     <div class="total-box">
-        <p class="text-right"><strong>TOTAL:</strong> Bs {{ number_format($venta->total, 2) }}</p>
+        <p class="text-right"><strong>SUBTOTAL:</strong> Bs {{ number_format($venta->subtotal, 2) }}</p>
+        @if ((float) $venta->descuento > 0)
+            <p class="text-right"><strong>REBAJA:</strong> - Bs {{ number_format($venta->descuento, 2) }}</p>
+        @endif
+        <p class="text-right"><strong>TOTAL FINAL:</strong> Bs {{ number_format($venta->total, 2) }}</p>
     </div>
 
     {{-- En la nota de venta, mostrar los datos adicionales --}}
@@ -122,17 +126,17 @@
         <div class="info-box mt-3">
             {{-- <strong>Datos de la Venta:</strong><br> --}}
             <strong>INCLUYE:</strong>
-            {{ $observacionesData['incluye_impuesto'] == 'con_impuesto' ? 'Impuestos de Ley' : 'Sin Impuesto' }}<br>
+            {{ ($observacionesData['incluye_impuesto'] ?? 'con_impuesto') == 'con_impuesto' ? 'Impuestos de Ley' : 'Sin Impuesto' }}<br>
 
-            <strong>FORMA DE PAGO:</strong> {{ ucfirst($observacionesData['forma_pago']) }}<br>
+            <strong>FORMA DE PAGO:</strong> {{ ucfirst($observacionesData['forma_pago'] ?? 'contado') }}<br>
 
             @if (!empty($observacionesData['lugar_entrega']))
                 <strong>LUGAR DE ENTREGA:</strong> {{ $observacionesData['lugar_entrega'] }}<br>
             @endif
 
-            <strong>PLAZO DE ENTREGA:</strong> {{ $observacionesData['plazo_entrega'] }} días confirmado el pedido<br>
+            <strong>PLAZO DE ENTREGA:</strong> {{ $observacionesData['plazo_entrega'] ?? 5 }} días confirmado el pedido<br>
 
-            <strong>VALIDEZ ECONOMICA:</strong> {{ ucfirst($observacionesData['validez_economica']) }} Horas<br>
+            <strong>VALIDEZ ECONOMICA:</strong> {{ ucfirst((string) ($observacionesData['validez_economica'] ?? 48)) }} Horas<br>
 
             {{-- @if (!empty($observacionesData['validez_economica']))
                 <strong>Lugar de Entrega:</strong> {{ $observacionesData['lugar_entrega'] }}<br>

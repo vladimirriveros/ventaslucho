@@ -1,14 +1,13 @@
-# Instrucciones de ejecución — V4 multisucursal
+# Instrucciones de ejecución — V6
 
-## Instalación limpia recomendada
+## Instalación recomendada para esta base de prueba
 
-Esta versión cambia seeders, permisos y obligatoriedad de sucursal. Como la base es de prueba, use una reconstrucción completa.
+> `php artisan migrate:fresh --seed` elimina todas las tablas y datos de la base configurada en `.env`.
 
-> `migrate:fresh --seed` elimina todas las tablas y datos de la base configurada en `.env`.
-
-Ejecute dentro del proyecto:
+Desde la carpeta del proyecto ejecute:
 
 ```bash
+composer install
 php artisan optimize:clear
 php artisan migrate:fresh --seed
 php artisan permission:cache-reset
@@ -17,63 +16,61 @@ php artisan negocio:auditar
 php artisan serve
 ```
 
-Si acaba de descomprimir el proyecto y la carpeta `vendor` no existe, ejecute primero:
-
-```bash
-composer install
-```
-
-No necesita `npm install` ni `npm run build` para estos cambios, porque no se modificaron recursos que dependan de Vite.
-
 Abra:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-## Credenciales de prueba
+Si `storage:link` indica que el enlace ya existe, puede continuar. No es necesario ejecutar `npm install` ni `npm run build`, porque esta versión modifica PHP, Blade y archivos públicos ya incluidos.
 
-### Superadministrador
+## Motivo para usar fresh
 
-- Correo: `vlavlavlariver@gmail.com`
-- Contraseña: `@dmin123`
+Esta versión no agrega una migración estructural nueva. Se recomienda reconstruir la base de prueba porque cambiaron:
 
-### Administrador de sucursal principal
+- la matriz de permisos del Superadministrador;
+- los permisos reservados al administrador de sucursal;
+- el estado inicial de los productos del seeder;
+- las pruebas y datos de demostración.
 
-- Correo: `admin@admin.com`
-- Contraseña: `123456789`
+`migrate:fresh --seed` ejecuta automáticamente `DatabaseSeeder`, `RoleSeeder` y `AdminUserSeeder`. No los ejecute de nuevo por separado.
 
-### Vendedor de sucursal principal
+## Superadministradores de prueba
 
-- Correo: `abc@abc.com`
-- Contraseña: `123456789`
+```text
+Propietario
+Correo: vlavlavlariver@gmail.com
+Contraseña: @dmin123
+```
 
-### Cajero de sucursal principal
+```text
+Desarrollador
+Correo: desarrollador@conserdei.com
+Contraseña: @dev12345
+```
 
-- Correo: `cajero@demo.com`
-- Contraseña: `123456789`
+## Usuarios operativos de prueba
 
-### Vendedor de sucursal norte
+```text
+Administrador: admin@admin.com / 123456789
+Vendedor: abc@abc.com / 123456789
+Cajero: cajero@demo.com / 123456789
+Vendedor Norte: vendedor.norte@demo.com / 123456789
+Almacén Norte: almacen.norte@demo.com / 123456789
+```
 
-- Correo: `vendedor.norte@demo.com`
-- Contraseña: `123456789`
+## Orden recomendado para probar
 
-### Almacén de sucursal norte
-
-- Correo: `almacen.norte@demo.com`
-- Contraseña: `123456789`
-
-## Primera prueba recomendada
-
-1. Ingrese como Superadministrador y revise Usuarios.
-2. Cree un usuario, asígnele una sucursal y el perfil `admin` o uno operativo.
-3. Ingrese como `admin@admin.com`.
-4. Cree una compra sin seleccionar sucursal.
-5. Agregue productos al carrito y finalice la compra.
-6. Ejecute:
+1. Ingrese como Superadministrador y compruebe que puede consultar compras de ambas sucursales, pero no crear, editar ni eliminar.
+2. Abra Caja como Superadministrador, cambie el filtro de sucursal y compruebe que solo aparecen controles de consulta.
+3. Ingrese como `admin@admin.com` o `almacen.norte@demo.com`.
+4. Cree una compra y avance al paso 2.
+5. Escriba el código o nombre de un producto, por ejemplo `TP` o `taladro`.
+6. Seleccione el resultado, revise el carrito y finalice la compra.
+7. Compruebe que el producto se activó y que el lote/stock quedó en la sucursal del usuario.
+8. Ejecute:
 
 ```bash
 php artisan negocio:auditar
+php artisan test
 ```
-
-El resultado esperado es que no se detecten inconsistencias.

@@ -18,9 +18,21 @@
                 </div>
                 <div class="card-body">
                     <div class="form-group">
-                        <label>Sucursal de caja</label>
-                        <div class="form-control bg-light"><i class="fas fa-store mr-2 text-primary"></i>{{ auth()->user()->sucursal->nombre }}</div>
-                        <small class="text-muted">No editable. La caja pertenece a la sucursal asignada al usuario.</small>
+                        @if (auth()->user()->can('operaciones.todas-sucursales'))
+                            <label for="sucursal-supervision-caja">Sucursal a supervisar</label>
+                            <select id="sucursal-supervision-caja" wire:model.live="sucursal_id" class="form-control">
+                                @foreach ($sucursales as $sucursal)
+                                    <option value="{{ $sucursal->id }}">{{ $sucursal->nombre }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">Filtro de consulta. El Superadministrador no puede abrir, cerrar ni modificar cajas.</small>
+                        @else
+                            <label>Sucursal de caja</label>
+                            <div class="form-control bg-light">
+                                <i class="fas fa-store mr-2 text-primary"></i>{{ auth()->user()->sucursal?->nombre ?? 'Sin sucursal' }}
+                            </div>
+                            <small class="text-muted">No editable. La caja pertenece a la sucursal asignada al usuario.</small>
+                        @endif
                     </div>
 
                     @if ($sucursal_id)
@@ -42,60 +54,82 @@
                                 <strong>💰 TOTAL ESPERADO:</strong> Bs {{ number_format($monto_esperado, 2) }}
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <button class="btn btn-warning btn-block" wire:click="abrirModalMovimiento">
-                                        <i class="fas fa-exchange-alt"></i> Nuevo Movimiento
-                                    </button>
+                            @if (auth()->user()->can('caja.movimientos') || auth()->user()->can('caja.cierre'))
+                                <div class="row">
+                                    @can('caja.movimientos')
+                                        <div class="col-md-6">
+                                            <button class="btn btn-warning btn-block" wire:click="abrirModalMovimiento">
+                                                <i class="fas fa-exchange-alt"></i> Nuevo Movimiento
+                                            </button>
+                                        </div>
+                                    @endcan
+                                    @can('caja.cierre')
+                                        <div class="col-md-6">
+                                            <button class="btn btn-danger btn-block" wire:click="abrirModalCierre">
+                                                <i class="fas fa-lock"></i> Cerrar Caja
+                                            </button>
+                                        </div>
+                                    @endcan
                                 </div>
-                                <div class="col-md-6">
-                                    <button class="btn btn-danger btn-block" wire:click="abrirModalCierre">
-                                        <i class="fas fa-lock"></i> Cerrar Caja
-                                    </button>
+                            @else
+                                <div class="alert alert-primary mb-2">
+                                    <i class="fas fa-eye mr-1"></i> Modo supervisión: esta caja es de solo lectura.
+                                </div>
+                            @endif
+                            <div class="row mt-2">
+                                <div class="col-md-12">
+                                    @can('ventas.create')
+                                        <a href="{{ route('ventas.create') }}" class="btn btn-info btn-block">
+                                            <i class="fas fa-cash-register"></i> Ir a Ventas
+                                        </a>
+                                    @endcan
                                 </div>
                             </div>
                             <div class="row mt-2">
                                 <div class="col-md-12">
-                                    <a href="{{ route('ventas.create') }}" class="btn btn-info btn-block">
-                                        <i class="fas fa-cash-register"></i> Ir a Ventas
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="row mt-2">
-                                <div class="col-md-12">
-                                    <button class="btn btn-secondary btn-block" wire:click="abrirModalHistorial">
-                                        <i class="fas fa-history"></i> Ver Historial de Cajas
-                                    </button>
+                                    @can('caja.reportes')
+                                        <button class="btn btn-secondary btn-block" wire:click="abrirModalHistorial">
+                                            <i class="fas fa-history"></i> Ver Historial de Cajas
+                                        </button>
+                                    @endcan
                                 </div>
                             </div>
                         @else
                             <div class="alert alert-info">No hay caja abierta.</div>
 
-                            <div class="form-group">
-                                <label>Monto Inicial</label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text">Bs</span>
+                            @can('caja.apertura')
+                                <div class="form-group">
+                                    <label>Monto Inicial</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">Bs</span>
+                                        </div>
+                                        <input type="number" wire:model="monto_inicial" class="form-control" step="0.01"
+                                            min="0">
                                     </div>
-                                    <input type="number" wire:model="monto_inicial" class="form-control" step="0.01"
-                                        min="0">
                                 </div>
-                            </div>
 
-                            <div class="form-group">
-                                <label>Observaciones</label>
-                                <textarea wire:model="observaciones_apertura" class="form-control" rows="2"></textarea>
-                            </div>
+                                <div class="form-group">
+                                    <label>Observaciones</label>
+                                    <textarea wire:model="observaciones_apertura" class="form-control" rows="2"></textarea>
+                                </div>
 
-                            <button class="btn btn-success btn-block" wire:click="confirmarApertura">
-                                <i class="fas fa-unlock-alt"></i> Abrir Caja
-                            </button>
+                                <button class="btn btn-success btn-block" wire:click="confirmarApertura">
+                                    <i class="fas fa-unlock-alt"></i> Abrir Caja
+                                </button>
+                            @else
+                                <div class="alert alert-primary">
+                                    <i class="fas fa-eye mr-1"></i> Modo supervisión: no puede abrir una caja.
+                                </div>
+                            @endcan
 
                             <div class="row mt-2">
                                 <div class="col-md-12">
-                                    <button class="btn btn-secondary btn-block" wire:click="abrirModalHistorial">
-                                        <i class="fas fa-history"></i> Ver Historial de Cajas
-                                    </button>
+                                    @can('caja.reportes')
+                                        <button class="btn btn-secondary btn-block" wire:click="abrirModalHistorial">
+                                            <i class="fas fa-history"></i> Ver Historial de Cajas
+                                        </button>
+                                    @endcan
                                 </div>
                             </div>
                         @endif
