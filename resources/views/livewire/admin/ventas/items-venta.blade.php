@@ -141,29 +141,12 @@
                             <span class="badge badge-primary">Total Bs {{ number_format($totalVenta, 2) }}</span>
                         </div>
                         <div class="card-body">
-                            <div class="sale-total-editor mb-3">
-                                <div>
-                                    <small>Subtotal de productos</small>
-                                    <strong>Bs {{ number_format($subtotalVenta, 2) }}</strong>
-                                    @if($descuento_monto > 0)<span class="badge badge-success">Rebaja Bs {{ number_format($descuento_monto, 2) }}</span>@endif
-                                </div>
-                                @can('ventas.aplicar-descuento')
-                                    <div class="sale-total-input">
-                                        <label for="total-final-venta">Total final a cobrar</label>
-                                        <div class="input-group">
-                                            <div class="input-group-prepend"><span class="input-group-text">Bs</span></div>
-                                            <input id="total-final-venta" type="number" value="{{ number_format($nuevo_total, 2, '.', '') }}"
-                                                wire:change="actualizarTotalFinal($event.target.value)" class="form-control font-weight-bold text-right"
-                                                min="0.01" max="{{ $subtotalVenta }}" step="0.01" inputmode="decimal">
-                                            @if($descuento_monto > 0)
-                                                <div class="input-group-append"><button type="button" class="btn btn-outline-danger" wire:click="quitarDescuento" title="Quitar rebaja"><i class="fas fa-undo"></i></button></div>
-                                            @endif
-                                        </div>
-                                        <small>Puede aplicar la rebaja antes o después de elegir efectivo, QR o pago mixto.</small>
-                                    </div>
-                                @else
-                                    <div class="sale-total-readonly"><small>Total final</small><strong>Bs {{ number_format($totalVenta, 2) }}</strong></div>
-                                @endcan
+                            <div class="sale-payment-summary mb-3">
+                                <span><small>Subtotal</small><strong>Bs {{ number_format($subtotalVenta, 2) }}</strong></span>
+                                @if($descuento_monto > 0)
+                                    <span class="text-success"><small>Rebaja</small><strong>- Bs {{ number_format($descuento_monto, 2) }}</strong></span>
+                                @endif
+                                <span class="sale-payment-total"><small>Total a cobrar</small><strong>Bs {{ number_format($totalVenta, 2) }}</strong></span>
                             </div>
 
                             <div class="row g-3">
@@ -366,9 +349,28 @@
                                                 <th></th>
                                             </tr>
                                         @endif
-                                        <tr>
-                                            <th colspan="5" class="text-right">TOTAL:</th>
-                                            <th class="text-right">Bs {{ number_format($totalVenta, 2) }}</th>
+                                        <tr class="sale-cart-total-row">
+                                            <th colspan="5" class="text-right align-middle">TOTAL FINAL:</th>
+                                            <th class="text-right">
+                                                @can('ventas.aplicar-descuento')
+                                                    <div class="input-group input-group-sm sale-cart-total-input">
+                                                        <div class="input-group-prepend"><span class="input-group-text">Bs</span></div>
+                                                        <input type="number" value="{{ number_format($nuevo_total, 2, '.', '') }}"
+                                                            wire:change="actualizarTotalFinal($event.target.value)"
+                                                            class="form-control text-right font-weight-bold" min="0.01"
+                                                            max="{{ $subtotalVenta }}" step="0.01" inputmode="decimal"
+                                                            aria-label="Total final de la venta">
+                                                        @if($descuento_monto > 0)
+                                                            <div class="input-group-append">
+                                                                <button type="button" class="btn btn-outline-danger" wire:click="quitarDescuento" title="Quitar rebaja"><i class="fas fa-undo"></i></button>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                    <small class="text-muted d-block mt-1">Edite el total para aplicar una rebaja.</small>
+                                                @else
+                                                    <strong>Bs {{ number_format($totalVenta, 2) }}</strong>
+                                                @endcan
+                                            </th>
                                             <th></th>
                                         </tr>
                                     </tfoot>

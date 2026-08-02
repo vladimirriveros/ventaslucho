@@ -61,4 +61,16 @@ class Sucursal extends Model
     {
         return $this->inventarioSucuralLotes()->sum('cantidad_en_sucursal');
     }
+    public function configuracionesProducto()
+    {
+        return $this->hasMany(ProductoSucursal::class);
+    }
+
+    public function productos()
+    {
+        return $this->belongsToMany(Producto::class, 'producto_sucursal')
+            ->withPivot(['activo', 'stock_minimo', 'stock_maximo'])
+            ->withTimestamps();
+    }
+
 }

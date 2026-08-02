@@ -290,6 +290,11 @@ public function generarPDFStockBajo($id)
     private function consultaStockProductos(int $sucursalId)
     {
         return Producto::query()
+            ->join('producto_sucursal', function ($join) use ($sucursalId) {
+                $join->on('producto_sucursal.producto_id', '=', 'productos.id')
+                    ->where('producto_sucursal.sucursal_id', '=', $sucursalId)
+                    ->where('producto_sucursal.activo', '=', true);
+            })
             ->where('productos.estado', true)
             ->leftJoin('lotes', 'lotes.producto_id', '=', 'productos.id')
             ->leftJoin('inventario_sucural_lotes', function ($join) use ($sucursalId) {
@@ -300,10 +305,16 @@ public function generarPDFStockBajo($id)
                 'productos.id as producto_id',
                 'productos.codigo as codigo_producto',
                 'productos.nombre as producto',
-                'productos.stock_minimo',
+                DB::raw('COALESCE(producto_sucursal.stock_minimo, productos.stock_minimo, 0) as stock_minimo'),
                 DB::raw("COALESCE(SUM(CASE WHEN lotes.estado = 1 AND (lotes.fecha_vencimiento IS NULL OR lotes.fecha_vencimiento >= '" . today()->toDateString() . "') THEN inventario_sucural_lotes.cantidad_en_sucursal ELSE 0 END), 0) as cantidad")
             )
-            ->groupBy('productos.id', 'productos.codigo', 'productos.nombre', 'productos.stock_minimo')
+            ->groupBy(
+                'productos.id',
+                'productos.codigo',
+                'productos.nombre',
+                'producto_sucursal.stock_minimo',
+                'productos.stock_minimo'
+            )
             ->get();
     }
 

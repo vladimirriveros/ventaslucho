@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Admin\Ventas\ItemsCotizacion;
 use App\Livewire\Admin\Ventas\ItemsVenta;
 use App\Models\Producto;
+use App\Models\ProductoSucursal;
 use App\Models\User;
 use App\Services\AlertaInventarioService;
 use Database\Seeders\DatabaseSeeder;
@@ -43,6 +44,11 @@ class RevisionV5Test extends TestCase
 
         $producto = Producto::firstOrFail();
         $producto->update(['estado' => true]);
+        ProductoSucursal::create([
+            'producto_id' => $producto->id,
+            'sucursal_id' => $usuario->sucursal_id,
+            'activo' => true,
+        ]);
         $resumen = app(AlertaInventarioService::class)->resumen($usuario);
 
         $this->assertSame(1, $resumen['stock_bajo']);

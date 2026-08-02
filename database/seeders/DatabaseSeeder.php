@@ -162,6 +162,16 @@ class DatabaseSeeder extends Seeder
         );
         $userAdmin->syncRoles(['admin']);
 
+        $userAdmin = User::updateOrCreate(
+            ['email' => 'coco@coco.com'],
+            [
+                'name' => 'coco admin',
+                'sucursal_id' => $sucursal->id+1,
+                'password' => bcrypt('123456789'),
+            ]
+        );
+        $userAdmin->syncRoles(['admin']);
+
         $userVendedor = User::updateOrCreate(
             ['email' => 'abc@abc.com'],
             [

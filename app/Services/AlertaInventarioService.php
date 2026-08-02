@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\InventarioSucuralLote;
-use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -16,14 +15,24 @@ class AlertaInventarioService
     public function resumen(User $user): array
     {
         $sucursales = $this->sucursalesAutorizadas($user);
-        $productos = Producto::query()
-            ->where('estado', true)
-            ->orderBy('nombre')
-            ->get(['id', 'codigo', 'nombre', 'stock_minimo']);
-
         $stockBajo = collect();
 
         foreach ($sucursales as $sucursal) {
+            // Solo se controlan productos habilitados para esta sucursal.
+            // El estado global del catálogo no activa alertas en otras sedes.
+            $productosSucursal = DB::table('producto_sucursal')
+                ->join('productos', 'producto_sucursal.producto_id', '=', 'productos.id')
+                ->where('producto_sucursal.sucursal_id', $sucursal->id)
+                ->where('producto_sucursal.activo', true)
+                ->where('productos.estado', true)
+                ->orderBy('productos.nombre')
+                ->get([
+                    'productos.id',
+                    'productos.codigo',
+                    'productos.nombre',
+                    DB::raw('COALESCE(producto_sucursal.stock_minimo, productos.stock_minimo, 0) AS stock_minimo'),
+                ]);
+
             $stocks = InventarioSucuralLote::query()
                 ->join('lotes', 'inventario_sucural_lotes.lote_id', '=', 'lotes.id')
                 ->where('inventario_sucural_lotes.sucursal_id', $sucursal->id)
@@ -38,7 +47,7 @@ class AlertaInventarioService
                 ->select('lotes.producto_id', DB::raw('SUM(inventario_sucural_lotes.cantidad_en_sucursal) AS stock'))
                 ->pluck('stock', 'producto_id');
 
-            foreach ($productos as $producto) {
+            foreach ($productosSucursal as $producto) {
                 $stock = (int) ($stocks[$producto->id] ?? 0);
                 $minimo = max(0, (int) $producto->stock_minimo);
 
@@ -61,10 +70,15 @@ class AlertaInventarioService
             ->join('lotes', 'inventario_sucural_lotes.lote_id', '=', 'lotes.id')
             ->join('productos', 'lotes.producto_id', '=', 'productos.id')
             ->join('sucursals', 'inventario_sucural_lotes.sucursal_id', '=', 'sucursals.id')
+            ->join('producto_sucursal', function ($join) {
+                $join->on('producto_sucursal.producto_id', '=', 'productos.id')
+                    ->on('producto_sucursal.sucursal_id', '=', 'inventario_sucural_lotes.sucursal_id');
+            })
             ->whereIn('inventario_sucural_lotes.sucursal_id', $sucursales->pluck('id'))
             ->where('inventario_sucural_lotes.cantidad_en_sucursal', '>', 0)
             ->where('lotes.estado', true)
-            ->where('productos.estado', true);
+            ->where('productos.estado', true)
+            ->where('producto_sucursal.activo', true);
 
         $porVencer = (clone $baseLotes)
             ->whereNotNull('lotes.fecha_vencimiento')

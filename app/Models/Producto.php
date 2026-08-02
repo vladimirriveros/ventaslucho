@@ -70,4 +70,16 @@ class Producto extends Model
         return $this->hasMany(DetalleSalida::class);
     }
 
+    public function configuracionesSucursal()
+    {
+        return $this->hasMany(ProductoSucursal::class);
+    }
+
+    public function sucursales()
+    {
+        return $this->belongsToMany(Sucursal::class, 'producto_sucursal')
+            ->withPivot(['activo', 'stock_minimo', 'stock_maximo'])
+            ->withTimestamps();
+    }
+
 }

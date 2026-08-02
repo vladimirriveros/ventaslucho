@@ -143,9 +143,6 @@
     <script>
         // 🔄 CAMBIO: Función global única, fuera del bucle
         window.validarYConvertir = function(cotizacionId) {
-            // Prevenir cualquier comportamiento por defecto
-            event?.preventDefault();
-
             Swal.fire({
                 title: 'Verificando stock...',
                 text: 'Por favor espere',
@@ -209,8 +206,7 @@
                 })
                 .catch(error => {
 
-                    // 🔄 CAMBIO: Verificar si es error 403 (caja cerrada)
-                    if (error.status === 403 && error.data?.error === 'caja_cerrada') {
+                    if (error.data?.error === 'caja_cerrada') {
                         Swal.fire({
                             title: 'Caja cerrada',
                             html: `${error.data.message || 'No hay una caja abierta en esta sucursal.'}<br><br>Debe abrir la caja antes de convertir a venta.`,

@@ -9,6 +9,7 @@ use App\Models\InventarioSucuralLote;
 use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\Lote;
+use App\Services\CotizacionStockService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -85,7 +86,7 @@ class ItemsCotizacion extends Component
 
     public function cargarProductos()
     {
-        $this->productos = Producto::where('estado', true)->orderBy('nombre')->get();
+        $this->productos = Producto::query()->orderBy('nombre')->get();
     }
 
     private function cargarCotizacion($cotizacion)
@@ -123,7 +124,7 @@ class ItemsCotizacion extends Component
     public function updatedBusquedaProducto()
     {
         if (strlen($this->busqueda_producto) >= 2) {
-            $this->productos_filtrados = Producto::where('estado', true)
+            $this->productos_filtrados = Producto::query()
                 ->where(function($query) {
                     $query->where('nombre', 'LIKE', "%{$this->busqueda_producto}%")
                         ->orWhere('codigo', 'LIKE', "%{$this->busqueda_producto}%")
@@ -167,9 +168,9 @@ class ItemsCotizacion extends Component
 
     public function seleccionarProducto($id, $nombre = null)
     {
-        $producto = Producto::query()->where('estado', true)->find($id);
+        $producto = Producto::query()->find($id);
         if (!$producto) {
-            $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'El producto ya no está disponible.');
+            $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'El producto ya no existe en el catálogo.');
             return;
         }
 
@@ -272,9 +273,9 @@ class ItemsCotizacion extends Component
             return;
         }
 
-        $producto = Producto::where('estado', true)->find($this->productoId);
+        $producto = Producto::query()->find($this->productoId);
         if (!$producto) {
-            $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'El producto no está activo.');
+            $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'El producto ya no existe en el catálogo.');
             return;
         }
 
@@ -495,7 +496,7 @@ class ItemsCotizacion extends Component
                 $itemsValidados = [];
                 $subtotalServidor = 0.0;
                 foreach ($this->carrito as $item) {
-                    $producto = Producto::query()->where('estado', true)->find($item['producto_id'] ?? null);
+                    $producto = Producto::query()->find($item['producto_id'] ?? null);
                     $cantidad = (int) ($item['cantidad'] ?? 0);
                     $precio = round((float) ($item['precio_unitario'] ?? 0), 2);
                     if (!$producto || $cantidad <= 0 || $precio <= 0) {
@@ -653,6 +654,16 @@ class ItemsCotizacion extends Component
             $this->dispatch('mostrar-alerta', icono: 'error', mensaje: 'No tiene permiso para convertir esta cotización.');
             return;
         }
+
+        $faltantes = app(CotizacionStockService::class)->faltantes($cotizacion);
+        if ($faltantes !== []) {
+            $detalle = collect($faltantes)
+                ->map(fn (array $item) => "{$item['codigo']} {$item['nombre']}: faltan {$item['cantidad_faltante']}")
+                ->implode(' | ');
+            $this->dispatch('mostrar-alerta', icono: 'warning', mensaje: 'Debe abastecer los productos antes de convertir: ' . $detalle);
+            return;
+        }
+
         return redirect()->route('ventas.create', ['cotizacion_id' => $cotizacionId]);
     }
 

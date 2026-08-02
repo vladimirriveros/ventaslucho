@@ -116,129 +116,122 @@
         </div>
 
         {{-- COLUMNA DERECHA: CARRITO DE COTIZACIÓN --}}
-        <div class="col-md-7">
-            <div class="card {{ count($carrito) > 0 ? 'card-warning' : 'card-secondary' }} card-outline app-operation-card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-file-invoice"></i> Productos Cotizados
-                    </h3>
+        <div class="col-lg-7">
+            <div class="card {{ count($carrito) > 0 ? 'card-warning' : 'card-secondary' }} card-outline app-operation-card quote-cart-card">
+                <div class="card-header quote-cart-header">
+                    <div>
+                        <h3 class="card-title mb-0"><i class="fas fa-file-invoice mr-2"></i>Productos cotizados</h3>
+                        <small class="text-muted">Puede cotizar productos aunque todavía no tengan existencias.</small>
+                    </div>
                     @if (count($carrito) > 0)
-                        <div class="card-tools">
-                            <button class="btn btn-danger btn-sm" wire:click="vaciarCarrito"
-                                onclick="confirmarVaciarCarrito(event)">
-                                <i class="fas fa-trash-alt"></i> Vaciar
-                            </button>
-                        </div>
+                        <button type="button" class="btn btn-outline-danger btn-sm" wire:click="vaciarCarrito"
+                            onclick="confirmarVaciarCarrito(event)">
+                            <i class="fas fa-trash-alt mr-1"></i>Vaciar
+                        </button>
                     @endif
                 </div>
-                <div class="card-body p-0">
+
+                <div class="card-body quote-cart-body">
                     @if (count($carrito) > 0)
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm mb-0">
-                                <thead class="bg-light">
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th width="80">Cant.</th>
-                                        <th width="100">Precio Unit.</th>
-                                        <th width="100">Subtotal</th>
-                                        <th width="40"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($carrito as $index => $item)
-                                        <tr>
-                                            <td>
-                                                <strong>{{ $item['producto_nombre'] }}</strong><br>
-                                                <small class="text-muted">{{ $item['producto_codigo'] }}</small>
-                                                @if ($item['lote_codigo'])
-                                                    <br><small class="badge badge-info">Lote:
-                                                        {{ $item['lote_codigo'] }}</small>
-                                                @endif
-                                            </td>
-                                            <td class="text-center" style="width: 100px;">
-                                                @php
-                                                    $stockActual = $this->obtenerStockDisponible($item['producto_id']);
-                                                    $cantidadEnCarrito = $item['cantidad'];
-                                                    $tieneStockSuficiente = $cantidadEnCarrito <= $stockActual;
-                                                @endphp
-                                                <input type="number"
-                                                    value="{{ $item['cantidad'] }}"
-                                                    class="form-control form-control-sm text-center"
-                                                    min="1" step="1" inputmode="numeric" wire:change="actualizarCantidadCarrito({{ $index }}, $event.target.value)">
-                                                <small class="{{ $tieneStockSuficiente ? 'text-success' : 'text-warning' }}">Stock actual: {{ $stockActual }}</small>
-                                                @if (!$tieneStockSuficiente)
-                                                    <small class="d-block text-warning"><i class="fas fa-exclamation-triangle"></i> Abastecer antes de convertir a venta.</small>
-                                                @endif
-                                            </td>
-                                            <td class="text-right" style="width: 120px;">
-                                                <div class="input-group input-group-sm">
-                                                    <div class="input-group-prepend">
-                                                        <span class="input-group-text">Bs</span>
-                                                    </div>
-                                                    <input type="number" value="{{ $item['precio_unitario'] }}"
-                                                        @can('ventas.modificar-precio')
-                                                            wire:change="actualizarPrecioUnitario({{ $index }}, $event.target.value)"
-                                                        @else
-                                                            readonly
-                                                        @endcan
-                                                        class="form-control form-control-sm text-right" step="0.01"
-                                                        min="0.01">
+                        <div class="quote-cart-list">
+                            @foreach ($carrito as $index => $item)
+                                @php
+                                    $stockActual = $this->obtenerStockDisponible($item['producto_id']);
+                                    $cantidadEnCarrito = (int) $item['cantidad'];
+                                    $tieneStockSuficiente = $cantidadEnCarrito <= $stockActual;
+                                @endphp
+                                <article class="quote-cart-item {{ $tieneStockSuficiente ? '' : 'has-shortage' }}"
+                                    wire:key="cotizacion-item-{{ $item['producto_id'] }}-{{ $index }}">
+                                    <div class="quote-product-info">
+                                        <span class="quote-product-code">{{ $item['producto_codigo'] }}</span>
+                                        <strong>{{ $item['producto_nombre'] }}</strong>
+                                        <span class="quote-stock-status {{ $tieneStockSuficiente ? 'is-ok' : 'is-warning' }}">
+                                            <i class="fas {{ $tieneStockSuficiente ? 'fa-check-circle' : 'fa-exclamation-triangle' }}"></i>
+                                            Stock actual: {{ $stockActual }}
+                                        </span>
+                                        @if (!$tieneStockSuficiente)
+                                            <small>Faltan {{ max(0, $cantidadEnCarrito - $stockActual) }} unidad(es). Debe abastecer antes de convertir a venta.</small>
+                                        @endif
+                                    </div>
+
+                                    <div class="quote-field">
+                                        <label>Cantidad</label>
+                                        <input type="number" value="{{ $item['cantidad'] }}"
+                                            class="form-control text-center" min="1" step="1" inputmode="numeric"
+                                            wire:change="actualizarCantidadCarrito({{ $index }}, $event.target.value)">
+                                    </div>
+
+                                    <div class="quote-field quote-price-field">
+                                        <label>Precio unitario</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">Bs</span></div>
+                                            <input type="number" value="{{ number_format($item['precio_unitario'], 2, '.', '') }}"
+                                                @can('ventas.modificar-precio')
+                                                    wire:change="actualizarPrecioUnitario({{ $index }}, $event.target.value)"
+                                                @else
+                                                    readonly
+                                                @endcan
+                                                class="form-control text-right" step="0.01" min="0.01" inputmode="decimal">
+                                        </div>
+                                    </div>
+
+                                    <div class="quote-line-total">
+                                        <small>Subtotal</small>
+                                        <strong>Bs {{ number_format($item['subtotal'], 2) }}</strong>
+                                    </div>
+
+                                    <button type="button" class="btn btn-outline-danger quote-remove"
+                                        wire:click="eliminarDelCarrito({{ $index }})" title="Quitar producto">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </article>
+                            @endforeach
+                        </div>
+
+                        <div class="quote-summary-panel">
+                            <div class="quote-summary-row">
+                                <span>Subtotal</span>
+                                <strong>Bs {{ number_format($subtotalCotizacion, 2) }}</strong>
+                            </div>
+                            @if ($descuentoCotizacion > 0)
+                                <div class="quote-summary-row is-discount">
+                                    <span>Rebaja aplicada</span>
+                                    <strong>- Bs {{ number_format($descuentoCotizacion, 2) }}</strong>
+                                </div>
+                            @endif
+                            <div class="quote-summary-total">
+                                <div>
+                                    <small>Total final</small>
+                                    <strong>Bs {{ number_format($totalCotizacion, 2) }}</strong>
+                                </div>
+                                @can('cotizaciones.aplicar-descuento')
+                                    <div class="quote-total-editor">
+                                        <label for="total-final-cotizacion">Editar total para aplicar rebaja</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">Bs</span></div>
+                                            <input id="total-final-cotizacion" type="number"
+                                                value="{{ number_format($nuevoTotalCotizacion, 2, '.', '') }}"
+                                                wire:change="actualizarTotalCotizacion($event.target.value)"
+                                                class="form-control text-right font-weight-bold" min="0.01"
+                                                max="{{ $subtotalCotizacion }}" step="0.01" inputmode="decimal">
+                                            @if ($descuentoCotizacion > 0)
+                                                <div class="input-group-append">
+                                                    <button type="button" class="btn btn-outline-danger"
+                                                        wire:click="quitarDescuentoCotizacion" title="Quitar rebaja">
+                                                        <i class="fas fa-undo"></i>
+                                                    </button>
                                                 </div>
-                                            </td>
-                                            <td class="text-right"><strong>Bs
-                                                    {{ number_format($item['subtotal'], 2) }}</strong></td>
-                                            <td class="text-center">
-                                                <button class="btn btn-danger btn-sm"
-                                                    wire:click="eliminarDelCarrito({{ $index }})">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot class="bg-light quote-total-footer">
-                                    <tr>
-                                        <th colspan="3" class="text-right">Subtotal:</th>
-                                        <th class="text-right">Bs {{ number_format($subtotalCotizacion, 2) }}</th>
-                                        <th></th>
-                                    </tr>
-                                    @if($descuentoCotizacion > 0)
-                                        <tr class="text-success">
-                                            <th colspan="3" class="text-right">Rebaja:</th>
-                                            <th class="text-right">- Bs {{ number_format($descuentoCotizacion, 2) }}</th>
-                                            <th></th>
-                                        </tr>
-                                    @endif
-                                    <tr>
-                                        <th colspan="3" class="text-right align-middle">TOTAL FINAL:</th>
-                                        <th class="text-right">
-                                            @can('cotizaciones.aplicar-descuento')
-                                                <div class="input-group input-group-sm total-edit-control">
-                                                    <div class="input-group-prepend"><span class="input-group-text">Bs</span></div>
-                                                    <input type="number" value="{{ number_format($nuevoTotalCotizacion, 2, '.', '') }}"
-                                                        wire:change="actualizarTotalCotizacion($event.target.value)"
-                                                        class="form-control text-right font-weight-bold" min="0.01" max="{{ $subtotalCotizacion }}" step="0.01" inputmode="decimal">
-                                                </div>
-                                                <small class="text-muted d-block mt-1">Edite el total para aplicar una rebaja.</small>
-                                            @else
-                                                <strong>Bs {{ number_format($totalCotizacion, 2) }}</strong>
-                                            @endcan
-                                        </th>
-                                        <th class="text-center">
-                                            @can('cotizaciones.aplicar-descuento')
-                                                @if($descuentoCotizacion > 0)
-                                                    <button type="button" class="btn btn-sm btn-outline-danger" wire:click="quitarDescuentoCotizacion" title="Quitar rebaja"><i class="fas fa-undo"></i></button>
-                                                @endif
-                                            @endcan
-                                        </th>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endcan
+                            </div>
                         </div>
                     @else
-                        <div class="alert alert-info m-3">
-                            <i class="fas fa-info-circle"></i> No hay productos en la cotización. Busque y agregue
-                            productos.
+                        <div class="quote-empty-state">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            <strong>Aún no hay productos cotizados</strong>
+                            <span>Busque cualquier producto del catálogo y agréguelo, tenga o no stock.</span>
                         </div>
                     @endif
                 </div>
@@ -671,76 +664,64 @@
                 });
             });
 
-            // Evento cuando la cotización se guarda
+            // Evento único al guardar: siempre permite imprimir y vuelve a
+            // comprobar inventario antes de abrir la pantalla de venta.
             Livewire.on('cotizacion-guardada', (data) => {
-
                 Swal.fire({
                     title: '¡Cotización guardada!',
                     html: `
-                        <p>Cotización #${data.cotizacionId} guardada exitosamente.</p>
-                        <div class="mt-3">
+                        <p>Cotización #${data.cotizacionId} guardada correctamente.</p>
+                        <p class="small text-muted">La cotización puede contener productos sin stock. La conversión se habilita únicamente después de abastecerlos.</p>
+                        <div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
                             <a href="${data.imprimirUrl}" target="_blank" class="btn btn-warning">
-                                <i class="fas fa-print"></i> Imprimir Cotización
+                                <i class="fas fa-print mr-1"></i>Imprimir
                             </a>
-                            <button id="btnConvertirVenta" class="btn btn-success ml-2">
-                                <i class="fas fa-exchange-alt"></i> Convertir a Venta
+                            <button id="btnVerificarConvertir" type="button" class="btn btn-success">
+                                <i class="fas fa-check-circle mr-1"></i>Verificar y convertir
                             </button>
                         </div>
                     `,
                     icon: 'success',
                     confirmButtonText: 'Cerrar',
                     didOpen: () => {
-                        const btnConvertir = document.getElementById('btnConvertirVenta');
-                        if (btnConvertir) {
-                            btnConvertir.addEventListener('click', () => {
-                                window.location.href =
-                                    `/admin/ventas/create?cotizacion_id=${data.cotizacionId}`;
-                            });
-                        }
-                    }
-                });
-            });
+                        const boton = document.getElementById('btnVerificarConvertir');
+                        if (!boton) return;
 
-            Livewire.on('cotizacion-guardada', (data) => {
+                        boton.addEventListener('click', async () => {
+                            boton.disabled = true;
+                            boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Verificando';
 
-                let botonesHtml = `
-                    <div class="mt-3">
-                        <a href="${data.imprimirUrl}" target="_blank" class="btn btn-warning">
-                            <i class="fas fa-print"></i> Imprimir Cotización
-                        </a>
-                `;
+                            try {
+                                const response = await fetch(`/admin/cotizaciones/verificar-stock/${data.cotizacionId}`, {
+                                    headers: {'Accept': 'application/json'}
+                                });
+                                const resultado = await response.json();
 
-                // 🔄 CAMBIO: Solo mostrar botón de convertir si NO tiene productos sin stock
-                if (!data.tieneSinStock) {
-                    botonesHtml += `
-                    <button id="btnConvertirVenta" class="btn btn-success ml-2">
-                        <i class="fas fa-exchange-alt"></i> Convertir a Venta
-                    </button>
-                `;
-                        } else {
-                            botonesHtml += `
-                    <button class="btn btn-secondary ml-2" disabled title="No se puede convertir porque hay productos sin stock">
-                        <i class="fas fa-exchange-alt"></i> Convertir a Venta (Stock insuficiente)
-                    </button>
-                    `;
-                }
+                                if (!response.ok || !resultado.ok) {
+                                    const faltantes = resultado.stock_insuficiente || [];
+                                    const detalle = faltantes.length
+                                        ? '<ul class="text-left mb-0">' + faltantes.map(item =>
+                                            `<li><strong>${item.codigo}</strong> ${item.nombre}: necesita ${item.cantidad_necesaria}, disponible ${item.stock_disponible}, faltan ${item.cantidad_faltante ?? (item.cantidad_necesaria - item.stock_disponible)}</li>`
+                                        ).join('') + '</ul>'
+                                        : `<p>${resultado.message || 'No es posible convertir la cotización.'}</p>`;
 
-                botonesHtml += `</div>`;
+                                    await Swal.fire({
+                                        title: resultado.error === 'caja_cerrada' ? 'Debe abrir caja' : 'Stock insuficiente',
+                                        html: detalle,
+                                        icon: 'warning',
+                                        confirmButtonText: 'Entendido'
+                                    });
+                                    return;
+                                }
 
-                Swal.fire({
-                    title: '¡Cotización guardada!',
-                    html: `<p>Cotización #${data.cotizacionId} guardada exitosamente.</p>${botonesHtml}`,
-                    icon: 'success',
-                    confirmButtonText: 'Cerrar',
-                    didOpen: () => {
-                        const btnConvertir = document.getElementById('btnConvertirVenta');
-                        if (btnConvertir) {
-                            btnConvertir.addEventListener('click', () => {
-                                // 🔄 CAMBIO: Antes de redirigir, verificar stock nuevamente
-                                window.location.href =
-                                    `/admin/ventas/create?cotizacion_id=${data.cotizacionId}`;
-                            });
-                        }
+                                window.location.href = `/admin/ventas/create?cotizacion_id=${data.cotizacionId}`;
+                            } catch (error) {
+                                await Swal.fire('No se pudo verificar', 'Intente nuevamente.', 'error');
+                            } finally {
+                                boton.disabled = false;
+                                boton.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Verificar y convertir';
+                            }
+                        });
                     }
                 });
             });

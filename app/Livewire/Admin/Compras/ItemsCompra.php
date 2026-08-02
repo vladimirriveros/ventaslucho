@@ -6,6 +6,7 @@ use App\Models\Compra;
 use App\Models\HistorialPrecio;
 use App\Models\InventarioSucuralLote;
 use App\Models\Producto;
+use App\Models\ProductoSucursal;
 use App\Models\Lote;
 use App\Models\Sucursal;
 use App\Services\InventarioService;
@@ -953,10 +954,16 @@ class ItemsCompra extends Component
                     ->get();
                 $stockActual = (int) $inventarios->sum('cantidad_en_sucursal');
 
-                if ((int) $producto->stock_maximo > 0 && $stockActual + $cantidadEntrante > (int) $producto->stock_maximo) {
+                $configuracionSucursal = ProductoSucursal::query()
+                    ->where('producto_id', $productoId)
+                    ->where('sucursal_id', $sucursalId)
+                    ->first();
+                $stockMaximo = (int) ($configuracionSucursal?->stock_maximo ?? $producto->stock_maximo);
+
+                if ($stockMaximo > 0 && $stockActual + $cantidadEntrante > $stockMaximo) {
                     throw new \RuntimeException(
                         "La recepción de {$producto->nombre} excede su stock máximo en la sucursal. " .
-                        "Actual: {$stockActual}; entrada: {$cantidadEntrante}; máximo: {$producto->stock_maximo}."
+                        "Actual: {$stockActual}; entrada: {$cantidadEntrante}; máximo: {$stockMaximo}."
                     );
                 }
             }

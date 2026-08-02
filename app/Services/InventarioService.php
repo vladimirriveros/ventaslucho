@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\InventarioSucuralLote;
 use App\Models\Lote;
 use App\Models\MovimientoInventario;
+use App\Models\ProductoSucursal;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -84,6 +85,19 @@ class InventarioService
         $this->validarCantidad($cantidad);
 
         $lote = Lote::query()->lockForUpdate()->findOrFail($loteId);
+
+        // Toda entrada habilita el producto únicamente en la sucursal que
+        // recibe existencias. Esto evita alertas falsas en otras sucursales.
+        ProductoSucursal::query()->updateOrCreate(
+            [
+                'producto_id' => $lote->producto_id,
+                'sucursal_id' => $sucursalId,
+            ],
+            [
+                'activo' => true,
+            ]
+        );
+
         $inventario = InventarioSucuralLote::query()
             ->where('lote_id', $loteId)
             ->where('sucursal_id', $sucursalId)

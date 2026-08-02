@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Caja;
 use App\Models\Cotizacion;
-use App\Models\InventarioSucuralLote;
+use App\Services\CotizacionStockService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -57,7 +57,7 @@ class CotizacionController extends Controller
         return $pdf->stream('cotizacion_' . $cotizacion->codigo . '.pdf');
     }
 
-    public function convertirAVenta(Request $request, $id)
+    public function convertirAVenta(Request $request, $id, CotizacionStockService $stockService)
     {
         $cotizacion = Cotizacion::findOrFail($id);
         abort_unless($request->user()->can('cotizaciones.convertir'), 403);
@@ -68,12 +68,22 @@ class CotizacionController extends Controller
                 ->with('icono', 'warning');
         }
 
+        $faltantes = $stockService->faltantes($cotizacion);
+        if ($faltantes !== []) {
+            $detalle = collect($faltantes)
+                ->map(fn (array $item) => "{$item['codigo']} {$item['nombre']}: faltan {$item['cantidad_faltante']}")
+                ->implode(' | ');
+
+            return back()->with('mensaje', 'No se puede convertir todavía. Debe abastecer: ' . $detalle)
+                ->with('icono', 'warning');
+        }
+
         return redirect()->route('ventas.create', ['cotizacion_id' => $id])
             ->with('mensaje', 'Cotización cargada. El inventario se validará al confirmar la venta.')
             ->with('icono', 'info');
     }
 
-    public function verificarStock(Request $request, $id)
+    public function verificarStock(Request $request, $id, CotizacionStockService $stockService)
     {
         $cotizacion = Cotizacion::with('detalles.producto')->findOrFail($id);
         abort_unless($request->user()->can('cotizaciones.convertir'), 403);
@@ -90,30 +100,7 @@ class CotizacionController extends Controller
             ], 422);
         }
 
-        $faltantes = [];
-        foreach ($cotizacion->detalles as $detalle) {
-            $stockDisponible = InventarioSucuralLote::query()
-                ->join('lotes', 'inventario_sucural_lotes.lote_id', '=', 'lotes.id')
-                ->where('inventario_sucural_lotes.sucursal_id', $cotizacion->sucursal_id)
-                ->where('lotes.producto_id', $detalle->producto_id)
-                ->where('inventario_sucural_lotes.cantidad_en_sucursal', '>', 0)
-                ->where('lotes.estado', true)
-                ->where('lotes.cantidad_actual', '>', 0)
-                ->where(function ($query) {
-                    $query->whereNull('lotes.fecha_vencimiento')
-                        ->orWhereDate('lotes.fecha_vencimiento', '>=', today());
-                })
-                ->sum('inventario_sucural_lotes.cantidad_en_sucursal');
-
-            if ((int) $stockDisponible < (int) $detalle->cantidad) {
-                $faltantes[] = [
-                    'nombre' => $detalle->producto->nombre,
-                    'codigo' => $detalle->producto->codigo,
-                    'cantidad_necesaria' => (int) $detalle->cantidad,
-                    'stock_disponible' => (int) $stockDisponible,
-                ];
-            }
-        }
+        $faltantes = $stockService->faltantes($cotizacion);
 
         return response()->json([
             'ok' => empty($faltantes),
