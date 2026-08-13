@@ -62,15 +62,17 @@
                                     @php
                                         $ids_productos = $productos_stock_bajo->pluck('producto_id')->implode(',');
                                     @endphp
-                                    <a href="{{ route('compras.create', [
-                                        'obs' => 'Reposición urgente - ' . $sucursal->nombre,
-                                        'productos' => $ids_productos,
-                                    ]) }}"
-                                        class="btn btn-success btn-sm"
-                                        title="Reponer stock automáticamente">
-                                        <i class="fas fa-cart-plus"></i>
-                                        <span class="d-none d-md-inline">Reponer</span>
-                                    </a>
+                                    @can('compras.create')
+                                        <a href="{{ route('compras.create', [
+                                            'obs' => 'Reposición urgente - ' . $sucursal->nombre,
+                                            'productos' => $ids_productos,
+                                        ]) }}"
+                                            class="btn btn-success btn-sm"
+                                            title="Reponer stock automáticamente">
+                                            <i class="fas fa-cart-plus"></i>
+                                            <span class="d-none d-md-inline">Reponer</span>
+                                        </a>
+                                    @endcan
 
 
                                 </div>

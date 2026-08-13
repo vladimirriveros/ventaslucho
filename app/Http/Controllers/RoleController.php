@@ -49,10 +49,10 @@ class RoleController extends Controller
     {
         $rol = Role::findOrFail($id);
 
-        // 🔒 PROTECCIÓN: No permitir cambiar el nombre del rol admin
-        if ($rol->name === 'superadmin' && $request->name !== 'superadmin') {
+        // Los roles internos del sistema mantienen un nombre fijo.
+        if (in_array($rol->name, ['superadmin', 'invitado'], true) && $request->name !== $rol->name) {
             return redirect()->route('roles.index')
-                ->with('mensaje', '❌ No se puede cambiar el nombre del rol "superadmin".')
+                ->with('mensaje', 'No se puede cambiar el nombre de un rol protegido del sistema.')
                 ->with('icono', 'error');
         }
 
@@ -78,7 +78,7 @@ class RoleController extends Controller
             $rol = Role::findOrFail($id);
 
             // 🔒 PROTECCIÓN: No permitir eliminar el rol admin
-            if (in_array($rol->name, ['superadmin', 'admin', 'vendedor', 'cajero', 'almacen'], true)) {
+            if (in_array($rol->name, ['superadmin', 'admin', 'vendedor', 'cajero', 'almacen', 'invitado'], true)) {
                 return redirect()->route('roles.index')
                     ->with('mensaje', '❌ No se pueden eliminar los roles predeterminados del sistema.')
                     ->with('icono', 'error');
@@ -229,11 +229,12 @@ class RoleController extends Controller
     {
         $rol = Role::findOrFail($id);
 
-        // El rol Superadministrador tiene una matriz fija de supervisión.
-        // No puede ampliarse con permisos operativos desde la interfaz.
-        if ($rol->name === 'superadmin') {
+        // Superadministrador e Invitado tienen matrices fijas. En especial,
+        // el invitado no debe recibir permisos de escritura porque su acceso
+        // puede estar publicado en el portafolio.
+        if (in_array($rol->name, ['superadmin', 'invitado'], true)) {
             return redirect()->route('roles.index')
-                ->with('mensaje', 'El rol Superadministrador es de supervisión y sus permisos están protegidos.')
+                ->with('mensaje', 'Este rol del sistema tiene permisos protegidos y no puede modificarse desde la interfaz.')
                 ->with('icono', 'info');
         }
 

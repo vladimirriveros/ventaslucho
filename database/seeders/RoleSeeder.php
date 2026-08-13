@@ -163,6 +163,15 @@ class RoleSeeder extends Seeder
         $vendedor = Role::firstOrCreate(['name' => 'vendedor', 'guard_name' => 'web']);
         $cajero = Role::firstOrCreate(['name' => 'cajero', 'guard_name' => 'web']);
         $almacen = Role::firstOrCreate(['name' => 'almacen', 'guard_name' => 'web']);
+        $invitado = Role::firstOrCreate(['name' => 'invitado', 'guard_name' => 'web']);
+
+        // El invitado está pensado para la versión pública del portafolio.
+        // Puede recorrer los principales módulos y reportes, pero no recibe
+        // ningún permiso de creación, edición, eliminación, cobro o ajuste.
+        // Tampoco ve usuarios, roles, clientes ni cuentas bancarias para no
+        // exponer datos sensibles en una demostración pública.
+        $permisosInvitado = config('demo.guest_permissions', []);
+        $invitado->syncPermissions($permissions->only($permisosInvitado)->values());
 
         // El Superadministrador es un perfil de supervisión global. Puede
         // consultar todas las sucursales, generar reportes y administrar

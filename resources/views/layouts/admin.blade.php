@@ -31,6 +31,9 @@
             <div class="min-w-0">
                 <strong class="d-block text-truncate">{{ auth()->user()->name }}</strong>
                 <small class="d-block text-truncate">{{ auth()->user()->sucursal?->nombre ?? 'Acceso global' }}</small>
+                @if(auth()->user()->hasRole('invitado'))
+                    <span class="guest-mode-badge mt-1"><i class="fas fa-eye"></i> Solo lectura</span>
+                @endif
             </div>
         </div>
 
@@ -158,8 +161,10 @@
                         <i class="fas fa-chevron-down small"></i>
                     </button>
                     <div class="dropdown-menu dropdown-menu-right">
-                        <a class="dropdown-item" href="{{ route('password.change') }}"><i class="fas fa-key mr-2"></i>Cambiar contraseña</a>
-                        <div class="dropdown-divider"></div>
+                        @unless(auth()->user()->hasRole('invitado'))
+                            <a class="dropdown-item" href="{{ route('password.change') }}"><i class="fas fa-key mr-2"></i>Cambiar contraseña</a>
+                            <div class="dropdown-divider"></div>
+                        @endunless
                         <a class="dropdown-item text-danger" href="{{ route('logout') }}" onclick="event.preventDefault();document.getElementById('logout-form').submit();"><i class="fas fa-sign-out-alt mr-2"></i>Cerrar sesión</a>
                         <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">@csrf</form>
                     </div>
@@ -171,7 +176,12 @@
             @if ($errors->any())
                 <div class="alert alert-danger app-alert"><strong>Revise los datos:</strong><ul class="mb-0 pl-3">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
             @endif
-            @if(auth()->user()->hasRole('superadmin'))
+            @if(auth()->user()->hasRole('invitado'))
+                <div class="guest-mode-banner">
+                    <i class="fas fa-eye"></i>
+                    <div><strong>Modo invitado · Portafolio</strong><br><small>Puede recorrer los principales módulos y reportes. Las acciones que modifican información están deshabilitadas.</small></div>
+                </div>
+            @elseif(auth()->user()->hasRole('superadmin'))
                 <div class="alert alert-info app-alert d-flex align-items-center mb-3">
                     <i class="fas fa-eye mr-2"></i>
                     <div><strong>Modo supervisión global:</strong> puede consultar todas las sucursales, administrar usuarios y roles, y generar reportes. Las operaciones de compra, venta, caja e inventario son de solo lectura.</div>

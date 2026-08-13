@@ -122,3 +122,284 @@ html[data-theme="dark"] .quote-cart-item.has-shortage{background:rgba(240,180,41
 @media(max-width:575.98px){.quote-cart-body{padding:.75rem}.quote-cart-item{grid-template-columns:1fr 1fr;padding:.8rem}.quote-product-info{grid-column:1/-1}.quote-field{min-width:0}.quote-price-field{grid-column:1/-1}.quote-line-total{grid-column:1/2;text-align:left}.quote-remove{grid-column:2/3;grid-row:auto;justify-self:end}.quote-summary-total{align-items:stretch;flex-direction:column}.quote-total-editor{width:100%}.quote-summary-total>div:first-child strong{font-size:1.3rem}.quote-cart-header .btn{width:100%}}
 .sale-payment-summary{display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;padding:.8rem 1rem;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}.sale-payment-summary span{display:flex;flex-direction:column}.sale-payment-summary small{color:var(--muted);font-size:.74rem;font-weight:800;text-transform:uppercase}.sale-payment-summary strong{font-size:1rem}.sale-payment-total strong{font-size:1.2rem}.sale-cart-total-input{min-width:220px}.sale-cart-total-row small{white-space:normal}
 @media(max-width:575.98px){.sale-payment-summary{align-items:stretch}.sale-payment-summary span{flex:1 1 120px}.sale-cart-total-input{min-width:170px}}
+
+/* Acceso invitado para la demostración pública del portafolio */
+.auth-demo-divider{display:flex;align-items:center;gap:.85rem;margin:1.35rem 0 1rem;color:var(--muted);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.auth-demo-divider::before,.auth-demo-divider::after{content:"";height:1px;flex:1;background:var(--border)}.auth-guest-submit{min-height:50px;border-radius:12px;font-weight:750}.auth-demo-note{display:flex;gap:.65rem;align-items:flex-start;margin-top:.9rem;padding:.8rem .9rem;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);color:var(--muted);font-size:.82rem;line-height:1.45}.auth-demo-note i{margin-top:.15rem;color:var(--primary)}.guest-mode-banner{display:flex;align-items:flex-start;gap:.7rem;padding:.8rem 1rem;margin-bottom:1rem;border:1px solid rgba(37,99,235,.2);border-radius:12px;background:rgba(37,99,235,.07);color:var(--text)}.guest-mode-banner i{color:var(--primary);margin-top:.15rem}.guest-mode-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .55rem;border-radius:999px;background:rgba(37,99,235,.1);color:var(--primary);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+
+/* ==========================================================
+   V11 · TABLAS RESPONSIVE
+   Escritorio: tabla tradicional.
+   Móvil: cada fila se convierte en una tarjeta legible.
+   Las etiquetas se inyectan desde conserdei-v2.js usando <th>.
+   ========================================================== */
+@media (max-width: 767.98px) {
+    /* El contenedor ya no obliga desplazamiento horizontal cuando la tabla
+       fue preparada por el adaptador responsive. */
+    .app-content .table-responsive:has(> table.app-responsive-table),
+    .app-content .dataTables_wrapper .table-responsive:has(table.app-responsive-table) {
+        overflow: visible !important;
+        border: 0 !important;
+    }
+
+    .app-content table.table.app-responsive-table,
+    .app-content .table-responsive > table.table.app-responsive-table,
+    .app-content .dataTables_wrapper table.table.app-responsive-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        border: 0 !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        background: transparent !important;
+        table-layout: auto !important;
+    }
+
+    .app-content table.app-responsive-table > thead {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+    }
+
+    .app-content table.app-responsive-table > tbody,
+    .app-content table.app-responsive-table > tbody > tr,
+    .app-content table.app-responsive-table > tbody > tr > td {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .app-content table.app-responsive-table > tbody > tr {
+        position: relative;
+        margin: 0 0 .85rem !important;
+        padding: .2rem .85rem !important;
+        overflow: hidden;
+        border: 1px solid var(--border) !important;
+        border-radius: 14px !important;
+        background: var(--surface) !important;
+        box-shadow: 0 4px 14px rgba(17, 33, 57, .06);
+    }
+
+    html[data-theme="dark"] .app-content table.app-responsive-table > tbody > tr {
+        box-shadow: 0 5px 18px rgba(0, 0, 0, .18);
+    }
+
+    .app-content table.app-responsive-table.table-striped > tbody > tr:nth-of-type(odd),
+    .app-content table.app-responsive-table.table-hover > tbody > tr:hover {
+        background: var(--surface) !important;
+    }
+
+    .app-content table.app-responsive-table > tbody > tr > td {
+        min-height: 43px;
+        padding: .68rem 0 !important;
+        border: 0 !important;
+        border-bottom: 1px solid var(--border) !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: normal;
+        text-align: left !important;
+        background: transparent !important;
+    }
+
+    .app-content table.app-responsive-table > tbody > tr > td:last-child {
+        border-bottom: 0 !important;
+    }
+
+    .app-content table.app-responsive-table > tbody > tr > td:not([colspan]) {
+        display: grid !important;
+        grid-template-columns: minmax(92px, 35%) minmax(0, 1fr);
+        align-items: start;
+        gap: .65rem;
+    }
+
+    .app-content table.app-responsive-table > tbody > tr > td:not([colspan])::before {
+        content: attr(data-label);
+        min-width: 0;
+        color: var(--muted);
+        font-size: .69rem;
+        font-weight: 800;
+        line-height: 1.35;
+        letter-spacing: .045em;
+        text-transform: uppercase;
+    }
+
+    .app-content table.app-responsive-table > tbody > tr > td[data-label=""],
+    .app-content table.app-responsive-table > tbody > tr > td.mobile-table-empty {
+        display: block !important;
+    }
+
+    .app-content table.app-responsive-table > tbody > tr > td[data-label=""]::before,
+    .app-content table.app-responsive-table > tbody > tr > td.mobile-table-empty::before {
+        display: none !important;
+    }
+
+    /* Los controles no deben heredarse como una columna estrecha. */
+    .app-content table.app-responsive-table td .btn-group,
+    .app-content table.app-responsive-table td .btn-toolbar,
+    .app-content table.app-responsive-table td .d-flex {
+        max-width: 100%;
+        flex-wrap: wrap !important;
+        gap: .35rem;
+    }
+
+    .app-content table.app-responsive-table td .btn-group > .btn,
+    .app-content table.app-responsive-table td .btn-toolbar .btn {
+        margin: 0 !important;
+        border-radius: 8px !important;
+    }
+
+    .app-content table.app-responsive-table td img {
+        max-width: min(180px, 100%);
+        height: auto;
+    }
+
+    /* DataTables: buscador, cantidad de registros y exportaciones. */
+    .app-content .dataTables_wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .app-content .dataTables_wrapper > .row:first-child,
+    .app-content .dataTables_wrapper > .row:last-child {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        row-gap: .65rem;
+    }
+
+    .app-content .dataTables_wrapper > .row:first-child > [class*="col-"],
+    .app-content .dataTables_wrapper > .row:last-child > [class*="col-"] {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .app-content .dataTables_wrapper .dataTables_length,
+    .app-content .dataTables_wrapper .dataTables_filter,
+    .app-content .dataTables_wrapper .dataTables_info,
+    .app-content .dataTables_wrapper .dataTables_paginate {
+        width: 100% !important;
+        margin: 0 !important;
+        text-align: left !important;
+    }
+
+    .app-content .dataTables_wrapper .dataTables_length label,
+    .app-content .dataTables_wrapper .dataTables_filter label {
+        width: 100%;
+        margin: 0;
+    }
+
+    .app-content .dataTables_wrapper .dataTables_filter input {
+        display: block;
+        width: 100% !important;
+        max-width: none !important;
+        min-height: 44px;
+        margin: .35rem 0 0 !important;
+        border-radius: 9px;
+    }
+
+    .app-content .dataTables_wrapper .dataTables_length select {
+        min-height: 40px;
+        margin: 0 .3rem;
+    }
+
+    .app-content .dataTables_wrapper .dt-buttons,
+    .app-content #example1_wrapper .dt-buttons {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: .45rem !important;
+        margin: 0 0 .75rem !important;
+        float: none !important;
+    }
+
+    .app-content .dataTables_wrapper .dt-buttons .btn,
+    .app-content #example1_wrapper .dt-buttons .btn {
+        width: 100% !important;
+        min-width: 0 !important;
+        min-height: 40px;
+        margin: 0 !important;
+        padding: .5rem .55rem !important;
+        font-size: .76rem !important;
+        white-space: normal;
+    }
+
+    .app-content .dataTables_wrapper .dataTables_info {
+        padding-top: .25rem !important;
+        color: var(--muted);
+        font-size: .82rem;
+        text-align: center !important;
+    }
+
+    .app-content .dataTables_wrapper .dataTables_paginate {
+        padding-top: .25rem !important;
+        overflow-x: auto;
+        text-align: center !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .app-content .dataTables_wrapper .pagination {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: .2rem;
+        margin-bottom: 0;
+    }
+
+    .app-content .dataTables_wrapper .page-link {
+        min-width: 38px;
+        text-align: center;
+        border-radius: 8px !important;
+    }
+
+    /* Cabeceras y botones generales de listados. */
+    .app-content .card-header .card-tools {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100% !important;
+        gap: .45rem !important;
+    }
+
+    .app-content .card-header .card-tools > .btn,
+    .app-content .card-header .card-tools > a.btn {
+        width: 100%;
+        margin: 0 !important;
+        white-space: normal;
+    }
+}
+
+@media (max-width: 399.98px) {
+    .app-content table.app-responsive-table > tbody > tr > td:not([colspan]) {
+        grid-template-columns: 1fr;
+        gap: .22rem;
+    }
+
+    .app-content table.app-responsive-table > tbody > tr > td:not([colspan])::before {
+        margin-bottom: .05rem;
+    }
+
+    .app-content .dataTables_wrapper .dt-buttons,
+    .app-content #example1_wrapper .dt-buttons,
+    .app-content .card-header .card-tools {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* V11: respetar filas/celdas ocultas por Bootstrap, DataTables o filtros JS. */
+@media (max-width: 767.98px) {
+    .app-content table.app-responsive-table > tbody > tr.d-none,
+    .app-content table.app-responsive-table > tbody > tr[hidden],
+    .app-content table.app-responsive-table > tbody > tr[style*="display: none"],
+    .app-content table.app-responsive-table > tbody > tr[style*="display:none"],
+    .app-content table.app-responsive-table > tbody > tr > td.d-none,
+    .app-content table.app-responsive-table > tbody > tr > td[hidden],
+    .app-content table.app-responsive-table > tbody > tr > td[style*="display: none"],
+    .app-content table.app-responsive-table > tbody > tr > td[style*="display:none"] {
+        display: none !important;
+    }
+}

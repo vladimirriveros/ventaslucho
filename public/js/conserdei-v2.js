@@ -58,3 +58,103 @@
         Livewire.on('mostrar-alerta',(payload)=>{const data=Array.isArray(payload)?payload[0]:payload;window.appToast(data?.mensaje||data?.text||'Operación completada',data?.icono||'info');});
     });
 })();
+
+/* V11 · Adaptador universal de tablas para teléfonos.
+   Conserva la tabla en escritorio y, mediante data-label, permite que CSS
+   presente cada fila como tarjeta en pantallas pequeñas. */
+(function () {
+    const TABLE_SELECTOR = 'table.table:not([data-mobile-table="scroll"]):not(.no-mobile-cards)';
+
+    function normalizeLabel(value) {
+        return String(value || '')
+            .replace(/\s+/g, ' ')
+            .replace(/[↑↓↕]+/g, '')
+            .trim();
+    }
+
+    function headerLabels(table) {
+        const rows = Array.from(table.querySelectorAll(':scope > thead > tr'));
+        if (!rows.length) return [];
+
+        /* Escoger la fila de encabezado con más columnas reduce errores en
+           cabeceras decorativas que usan colspan. */
+        let headerRow = rows[0];
+        rows.forEach((row) => {
+            if (row.querySelectorAll('th').length > headerRow.querySelectorAll('th').length) {
+                headerRow = row;
+            }
+        });
+
+        return Array.from(headerRow.querySelectorAll(':scope > th')).map((th) =>
+            normalizeLabel(th.innerText || th.textContent)
+        );
+    }
+
+    function enhanceTable(table) {
+        if (!(table instanceof HTMLTableElement)) return;
+        const labels = headerLabels(table);
+        if (labels.length < 2) return;
+
+        table.classList.add('app-responsive-table');
+        table.setAttribute('data-responsive-ready', '1');
+
+        table.querySelectorAll(':scope > tbody > tr').forEach((row) => {
+            const cells = Array.from(row.children).filter((cell) => cell.tagName === 'TD');
+            if (!cells.length) return;
+
+            cells.forEach((cell, index) => {
+                if (cell.hasAttribute('colspan')) {
+                    cell.classList.add('mobile-table-empty');
+                    cell.setAttribute('data-label', '');
+                    return;
+                }
+
+                let label = labels[index] || '';
+                if (!label && index === cells.length - 1 && cell.querySelector('button, a.btn, .btn-group')) {
+                    label = 'Acciones';
+                }
+                cell.setAttribute('data-label', label);
+            });
+        });
+    }
+
+    function enhanceWithin(root) {
+        if (!root) return;
+        if (root.matches && root.matches(TABLE_SELECTOR)) enhanceTable(root);
+        if (root.querySelectorAll) root.querySelectorAll(TABLE_SELECTOR).forEach(enhanceTable);
+    }
+
+    function bootResponsiveTables() {
+        enhanceWithin(document);
+
+        /* DataTables y Livewire reemplazan filas dinámicamente. El observer
+           prepara únicamente los nodos nuevos sin interferir con su estado. */
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType !== Node.ELEMENT_NODE) return;
+                    const element = /** @type {Element} */ (node);
+                    const table = element.closest && element.closest(TABLE_SELECTOR);
+                    if (table) enhanceTable(table);
+                    enhanceWithin(element);
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        if (window.jQuery) {
+            window.jQuery(document).on('draw.dt', function (_event, settings) {
+                if (settings && settings.nTable) enhanceTable(settings.nTable);
+            });
+        }
+
+        document.addEventListener('livewire:navigated', () => enhanceWithin(document));
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootResponsiveTables, { once: true });
+    } else {
+        bootResponsiveTables();
+    }
+})();

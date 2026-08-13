@@ -71,6 +71,10 @@
                                                 title="Administrador protegido - No se puede eliminar">
                                                 <i class="fas fa-shield-alt"></i> PROTEGIDO
                                             </span>
+                                        @elseif($user->hasRole('invitado'))
+                                            <span class="badge badge-info" data-toggle="tooltip" title="Cuenta pública de demostración · solo lectura">
+                                                <i class="fas fa-eye"></i> DEMO
+                                            </span>
                                         @endif
                                     </td>
                                     <td>{{ $user->email }}</td>
@@ -127,20 +131,22 @@
                                                 @can('user.assign-roles')
                                                     <button type="button" class="btn btn-info"
                                                         onclick="abrirModalRoles({{ $user->id }})"
-                                                        @if ($user->is_protected || (!auth()->user()->esSuperAdministrador() && $user->id === auth()->id())) disabled @endif
+                                                        @if ($user->is_protected || $user->hasRole('invitado') || (!auth()->user()->esSuperAdministrador() && $user->id === auth()->id())) disabled @endif
                                                         title="Asignar perfiles operativos">
                                                         <i class="fas fa-tags"></i>
                                                     </button>
                                                 @endcan
 
                                                 @can('user.update')
-                                                    <a href="{{ route('user.edit', $user->id) }}" class="btn btn-success" title="Editar usuario y sucursal">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
+                                                    @unless($user->hasRole('invitado'))
+                                                        <a href="{{ route('user.edit', $user->id) }}" class="btn btn-success" title="Editar usuario y sucursal">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                    @endunless
                                                 @endcan
 
                                                 @can('user.destroy')
-                                                    @if (!$user->is_protected && $user->id !== auth()->id())
+                                                    @if (!$user->is_protected && !$user->hasRole('invitado') && $user->id !== auth()->id())
                                                         <form action="{{ route('user.destroy', $user->id) }}" method="POST" class="d-inline" id="form-eliminar-{{ $user->id }}">
                                                             @csrf
                                                             @method('DELETE')

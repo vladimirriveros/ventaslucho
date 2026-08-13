@@ -58,9 +58,10 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // El Superadministrador se crea después de las sucursales para que toda
-        // operación tenga una sucursal de trabajo asignada desde el inicio.
+        // El Superadministrador y el usuario invitado se crean después de las
+        // sucursales para que ambos tengan una sucursal válida de referencia.
         $this->call(AdminUserSeeder::class);
+        $this->call(DemoGuestSeeder::class);
 
         $categorias = [
             ['nombre' => 'HERRAMIENTAS ELECTRICAS', 'descripcion' => 'Taladros, esmeriles, sierras'],

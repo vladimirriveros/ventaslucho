@@ -17,6 +17,7 @@ use App\Http\Controllers\SalidaController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\CotizacionController;
 use App\Http\Controllers\AlertaController;
+use App\Http\Controllers\Auth\GuestLoginController;
 
 // use App\Models\DetalleSalida;
 // use App\Models\Salida;
@@ -27,6 +28,12 @@ use Illuminate\Support\Facades\Auth;
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+// Acceso de demostración para el portafolio. Usa POST + CSRF y una cuenta
+// de solo lectura; no expone usuario ni contraseña en la interfaz.
+Route::post('/ingresar-invitado', GuestLoginController::class)
+    ->name('guest.login')
+    ->middleware('throttle:20,1');
 
 // El sistema trabaja con usuarios creados por administración/seeders.
 // Se deshabilita el registro público para evitar altas no autorizadas.

@@ -79,6 +79,7 @@ class UserController extends Controller
         $this->autorizarSuperadmin();
 
         $user = User::withTrashed()->with(['roles', 'sucursal'])->findOrFail($id);
+        abort_if($this->esCuentaInvitado($user), 403, 'La cuenta invitada del portafolio se administra mediante su seeder.');
         $roles = $this->rolesAsignablesPorSuperadmin();
         $sucursales = Sucursal::where('activa', true)->orderBy('nombre')->get();
 
@@ -90,6 +91,7 @@ class UserController extends Controller
         $this->autorizarSuperadmin();
 
         $user = User::withTrashed()->findOrFail($id);
+        abort_if($this->esCuentaInvitado($user), 403, 'La cuenta invitada del portafolio se administra mediante su seeder.');
 
         if ($user->is_protected) {
             abort_unless($user->id === Auth::id(), 403, 'No puede modificar al Superadministrador principal.');
@@ -150,6 +152,7 @@ class UserController extends Controller
         $this->autorizarSuperadmin();
 
         $usuario = User::findOrFail($id);
+        abort_if($this->esCuentaInvitado($usuario), 403, 'No se puede eliminar la cuenta invitada del portafolio.');
         abort_if($usuario->is_protected, 403, 'No se puede eliminar al Superadministrador.');
         abort_if($usuario->id === Auth::id(), 403, 'No puede eliminar su propio usuario.');
 
@@ -165,6 +168,7 @@ class UserController extends Controller
         $this->autorizarSuperadmin();
 
         $usuario = User::withTrashed()->findOrFail($id);
+        abort_if($this->esCuentaInvitado($usuario), 403, 'La cuenta invitada se restaura mediante su seeder.');
         abort_if($usuario->is_protected, 403, 'El Superadministrador no puede encontrarse eliminado.');
         $usuario->restore();
 
@@ -178,6 +182,7 @@ class UserController extends Controller
         $this->autorizarSuperadmin();
 
         $usuario = User::withTrashed()->findOrFail($id);
+        abort_if($this->esCuentaInvitado($usuario), 403, 'No se puede eliminar permanentemente la cuenta invitada del portafolio.');
         abort_if($usuario->is_protected, 403, 'No se puede eliminar permanentemente al Superadministrador.');
         $usuario->forceDelete();
 
@@ -262,15 +267,22 @@ class UserController extends Controller
     {
         abort_unless($actor->esSuperAdministrador(), 403, 'Solo el Superadministrador puede asignar roles.');
         abort_if($objetivo->is_protected || $objetivo->hasRole('superadmin'), 403, 'No se pueden modificar los roles del Superadministrador.');
+        abort_if($this->esCuentaInvitado($objetivo), 403, 'No se pueden modificar los roles de la cuenta invitada del portafolio.');
         abort_if($actor->id === $objetivo->id, 403, 'No puede modificar sus propios roles.');
     }
 
     private function rolesAsignablesPorSuperadmin()
     {
         return Role::query()
-            ->where('name', '!=', 'superadmin')
+            ->whereNotIn('name', ['superadmin', 'invitado'])
             ->orderBy('name')
             ->get();
+    }
+
+    private function esCuentaInvitado(User $user): bool
+    {
+        return $user->email === (string) config('demo.guest_email', 'invitado@demo.local')
+            || $user->hasRole('invitado');
     }
 
 }

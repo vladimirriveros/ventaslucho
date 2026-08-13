@@ -10,6 +10,8 @@ class ProfileController extends Controller
 {
     public function showChangePasswordForm()
     {
+        abort_if(Auth::user()?->hasRole('invitado'), 403, 'La cuenta invitada no puede cambiar credenciales.');
+
         return view('auth.change-password');
     }
 
@@ -21,6 +23,7 @@ class ProfileController extends Controller
         ]);
 
         $user = Auth::user();
+        abort_if($user?->hasRole('invitado'), 403, 'La cuenta invitada no puede cambiar credenciales.');
 
         // Verificar contraseña actual
         if (!Hash::check($request->current_password, $user->password)) {

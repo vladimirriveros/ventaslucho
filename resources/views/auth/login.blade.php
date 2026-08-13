@@ -16,6 +16,12 @@
         </div>
     @endif
 
+    @if (session('guest_error'))
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle mr-2"></i>{{ session('guest_error') }}
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('login') }}" novalidate>
         @csrf
         <div class="form-group">
@@ -56,6 +62,20 @@
             <i class="fas fa-sign-in-alt mr-2"></i>Ingresar al sistema
         </button>
     </form>
+
+    @if (config('demo.guest_login_enabled', true))
+        <div class="auth-demo-divider"><span>o prueba la demostración</span></div>
+        <form method="POST" action="{{ route('guest.login') }}">
+            @csrf
+            <button type="submit" class="btn btn-outline-primary btn-block auth-guest-submit">
+                <i class="fas fa-eye mr-2"></i>Ingresar como invitado
+            </button>
+        </form>
+        <div class="auth-demo-note">
+            <i class="fas fa-shield-alt"></i>
+            <span><strong>Modo demostración:</strong> acceso de solo lectura para recorrer el sistema sin usuario ni contraseña.</span>
+        </div>
+    @endif
 @endsection
 
 @section('js')
