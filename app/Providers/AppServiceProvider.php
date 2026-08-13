@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Sucursal;
 use App\Services\AlertaInventarioService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
@@ -36,7 +37,25 @@ class AppServiceProvider extends ServiceProvider
                 // Durante instalación o migraciones la interfaz debe seguir cargando.
             }
 
-            $view->with('alertasSistema', $alertas);
+            $asistenteSucursales = collect();
+            $asistenteAccesoGlobal = false;
+
+            try {
+                if ($user = Auth::user()) {
+                    $asistenteAccesoGlobal = ! $user->hasRole('invitado') && $user->can('operaciones.todas-sucursales');
+                    $asistenteSucursales = $asistenteAccesoGlobal
+                        ? Sucursal::query()->select(['id', 'nombre', 'activa'])->orderBy('nombre')->get()
+                        : collect();
+                }
+            } catch (Throwable) {
+                // La instalación inicial no debe fallar si las tablas aún no existen.
+            }
+
+            $view->with([
+                'alertasSistema' => $alertas,
+                'asistenteSucursales' => $asistenteSucursales,
+                'asistenteAccesoGlobal' => $asistenteAccesoGlobal,
+            ]);
         });
     }
 }

@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="//cdn.datatables.net/buttons/2.4.0/css/buttons.bootstrap4.min.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css">
     <link rel="stylesheet" href="{{ asset('css/conserdei-v2.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/asistente-negocio.css') }}">
     @livewireStyles
     @stack('css')
     @yield('css')
@@ -200,6 +201,7 @@
 
         <footer class="app-footer"><span>CONSERDEI · Sistema de ventas e inventario</span><span>Laravel {{ app()->version() }}</span></footer>
     </div>
+    @include('partials.asistente-negocio')
 
     <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
@@ -221,10 +223,13 @@
         window.Conserdei = {
             alertasUrl: @json(route('alertas.resumen')),
             alertCenterUrl: @json(route('alertas.index')),
+            assistantUrl: @json(route('asistente.consultar')),
+            assistantGlobal: @json((bool) ($asistenteAccesoGlobal ?? false)),
             userId: {{ (int) auth()->id() }}
         };
     </script>
     <script src="{{ asset('js/conserdei-v2.js') }}"></script>
+    <script src="{{ asset('js/asistente-negocio.js') }}"></script>
 
     @if (($mensaje = session('mensaje')) && ($icono = session('icono')))
         <script>document.addEventListener('DOMContentLoaded',()=>window.appToast(@json($mensaje), @json($icono)));</script>
