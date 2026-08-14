@@ -221,9 +221,9 @@
     @livewireScripts
     <script>
         window.Conserdei = {
-            alertasUrl: @json(route('alertas.resumen')),
-            alertCenterUrl: @json(route('alertas.index')),
-            assistantUrl: @json(route('asistente.consultar')),
+            alertasUrl: @json(route('alertas.resumen', [], false)),
+            alertCenterUrl: @json(route('alertas.index', [], false)),
+            assistantUrl: @json(route('asistente.consultar', [], false)),
             assistantGlobal: @json((bool) ($asistenteAccesoGlobal ?? false)),
             userId: {{ (int) auth()->id() }}
         };

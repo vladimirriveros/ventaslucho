@@ -181,7 +181,18 @@
             const payload = { mensaje: text };
             if (branch && branch.value) payload.sucursal_id = Number(branch.value);
 
-            const response = await fetch(config.assistantUrl, {
+            // Usar siempre una URL del mismo origen. En producción (Render/HTTPS), una
+            // URL absoluta generada como http://... puede ser bloqueada por el navegador
+            // como contenido mixto y produce únicamente "Failed to fetch".
+            let assistantEndpoint = String(config.assistantUrl || '/admin/asistente/consultar');
+            try {
+                const parsed = new URL(assistantEndpoint, window.location.origin);
+                assistantEndpoint = `${parsed.pathname}${parsed.search}`;
+            } catch (_) {
+                assistantEndpoint = '/admin/asistente/consultar';
+            }
+
+            const response = await fetch(assistantEndpoint, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
@@ -193,11 +204,22 @@
                 body: JSON.stringify(payload)
             });
 
-            const data = await response.json().catch(() => ({}));
+            const raw = await response.text();
+            let data = {};
+            try { data = raw ? JSON.parse(raw) : {}; } catch (_) {}
+
             loading.remove();
             if (!response.ok) {
                 const validation = data.errors ? Object.values(data.errors).flat().join(' ') : '';
-                throw new Error(validation || data.message || data.reply || 'No se pudo completar la consulta.');
+                const statusMessages = {
+                    401: 'La sesión terminó. Inicie sesión nuevamente.',
+                    403: 'Su usuario no tiene permiso para realizar esta consulta.',
+                    419: 'La sesión de seguridad venció. Actualice la página e intente nuevamente.',
+                    422: 'Revise la consulta enviada.',
+                    429: 'Se enviaron demasiadas consultas. Espere un momento e intente nuevamente.',
+                    500: 'Laravel encontró un error al procesar la consulta. Revise storage/logs/laravel.log.'
+                };
+                throw new Error(validation || data.message || data.reply || statusMessages[response.status] || `Error HTTP ${response.status}.`);
             }
 
             appendMessage('bot', data.reply || 'Consulta completada.', data);
@@ -205,7 +227,10 @@
             saveHistory();
         } catch (error) {
             loading.remove();
-            appendMessage('bot', error.message || 'No pude completar la consulta. Intente nuevamente.');
+            const message = error instanceof TypeError && /fetch|network/i.test(String(error.message || ''))
+                ? 'No pude comunicarme con Laravel. Actualice la página e intente nuevamente. Si está en Render, verifique que el despliegue haya terminado correctamente.'
+                : (error.message || 'No pude completar la consulta. Intente nuevamente.');
+            appendMessage('bot', message);
             renderSuggestions(defaults);
             saveHistory();
         } finally {
